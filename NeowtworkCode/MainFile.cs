@@ -21,6 +21,7 @@ public partial class MainFile : Node
 
         harmony.PatchAll();
 
+        VanillaProgressImportAssistant.TryOfferImport(Logger);
         RunHistoryScanner.ScanAndLog(Logger);
     }
 }

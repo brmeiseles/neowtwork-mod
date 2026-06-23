@@ -127,13 +127,13 @@ Slay the Spire 2 separates vanilla and modded profile progress. Steam Cloud can 
 
 Rules:
 
-- Do not edit save files unless the user explicitly asks.
+- Do not edit save files unless the user explicitly asks or the user confirms the in-game vanilla-to-modded import prompt.
 - Do not touch Steam Cloud data unless the user explicitly asks.
 - Treat vanilla saves as source-of-truth if syncing is requested.
 - Always make timestamped backups before copying save files.
 - Prefer read-only parsing of `.run` history files for stats.
 
-The mod itself should not intentionally write to save files.
+The mod should only write save files through the approved vanilla-to-modded import flow. That flow must ask first, back up first, never write vanilla data, and never touch Steam Cloud directly.
 
 ## Stats architecture
 

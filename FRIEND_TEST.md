@@ -100,10 +100,11 @@ mods/
 
 1. Launch Slay the Spire 2.
 2. Confirm the game says it is running modded.
-3. Open the compendium/card library.
-4. Enable `View Stats`.
-5. Check a few cards.
-6. Try the `Card Stats` sorting dropdown.
+3. If Neowtwork asks `Import base-game data?`, choose whether to import your vanilla progress into the modded profile.
+4. Open the compendium/card library.
+5. Enable `View Stats`.
+6. Check a few cards.
+7. Try the `Card Stats` sorting dropdown.
 
 ## What to report back
 
@@ -112,6 +113,8 @@ Please send:
 - Did the game launch?
 - Did BaseLib load?
 - Did Neowtwork load?
+- Did Neowtwork ask to import base-game data?
+- If you chose Import, did your compendium/progress appear afterward?
 - Did the compendium open?
 - Did the extra card stats show?
 - Did the `Card Stats` sorting dropdown work?
@@ -124,19 +127,21 @@ Slay the Spire 2 separates vanilla and modded profile progress.
 
 If your modded profile looks empty or the compendium is locked, your vanilla progress is probably still safe; the game is just using a separate modded save lane.
 
-For this first test, it is okay if your stats are sparse or empty. The most important thing is whether the mod loads and the UI works.
+Neowtwork may offer to import base-game data. This copies your vanilla profile into the matching modded profile after creating a backup.
 
-Do not copy or edit save files unless Brandon explicitly asks you to.
+- Choosing `Import` creates a backup first, then copies vanilla progress and run history into modded.
+- Choosing `Not Now` does not change save files.
+- Neowtwork does not copy modded data back into vanilla.
+- Neowtwork does not control Steam Cloud.
+
+Do not manually copy or edit save files unless Brandon explicitly asks you to.
 
 ## Steam Cloud warning
 
 Steam Cloud can complicate modded-profile testing.
 
-For this first friend test:
-
-- Do not manually copy save files.
-- Do not try to sync vanilla progress into the modded profile.
+- Neowtwork imports local vanilla data into the local modded profile.
+- Neowtwork does not resolve Steam Cloud conflicts.
 - Do not choose random cloud conflict options just to make progress appear.
-- If Steam shows a Cloud Conflict dialog, pause and ask Brandon before choosing.
-
-If we later decide to mirror vanilla progress into the modded profile, that should be done carefully with backups. It is not required for this first install/load test.
+- If Steam shows a Cloud Conflict dialog after an intentional import, the local save is usually the one you want to keep.
+- If unsure, pause and ask Brandon before choosing.

@@ -18,6 +18,7 @@ The current prototype improves the card compendium by showing compact card analy
   - Skipped
   - Seen
 - Selecting the same stat sort twice reverses the exact sort order.
+- Offers a first-run import prompt when vanilla progress exists but the matching modded profile appears empty or behind.
 - Includes a read-only run-history scanner that currently logs summary information.
 
 ## Friend testing
@@ -41,9 +42,9 @@ This has been tested locally on macOS / Apple Silicon using the public Slay the 
 
 Slay the Spire 2 separates vanilla and modded profile progress. During local development, Steam Cloud can overwrite local modded save changes.
 
-For local testing, Steam Cloud may need to be disabled temporarily if the modded profile appears to lose compendium or character progress.
+Neowtwork can offer to import local vanilla progress into the matching local modded profile. It creates a backup first and does not copy modded data back into vanilla.
 
-This mod does not intentionally edit save files.
+Neowtwork does not control Steam Cloud or resolve Steam Cloud conflicts automatically.
 
 ## Development status
 

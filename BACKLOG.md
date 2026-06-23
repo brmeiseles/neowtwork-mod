@@ -85,17 +85,17 @@ Keep the spirit of the game alive: small, readable, native-feeling improvements 
 
 ## Save and progress sync
 
-- Design a first-run vanilla-to-modded progress import flow.
+- Test and polish the first-run vanilla-to-modded progress import flow.
   - Must ask before copying anything.
   - Must explain what will happen.
   - Must create timestamped backups first.
   - Must never silently overwrite user progress.
-- Detect likely sync states:
+- Current first pass detects likely sync states:
   - vanilla has progress, modded is empty
   - both have progress
   - modded has newer progress
   - missing or unreadable save folders
-- Decide whether this belongs in-game, as a helper script, or both.
+- Decide whether a helper script is also needed for users who cannot use the in-game prompt.
 - Document manual sync steps for friends only after the safe flow is understood.
 
 ## Friend testing
