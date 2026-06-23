@@ -105,6 +105,7 @@ internal static class CardLibraryWinRateSort
             FocusMode = Control.FocusModeEnum.None,
             ZIndex = alphabetSorter.ZIndex + 2,
             Flat = true,
+            MouseFilter = Control.MouseFilterEnum.Stop,
             MouseDefaultCursorShape = Control.CursorShape.PointingHand
         };
 
@@ -261,29 +262,35 @@ internal static class CardLibraryWinRateSort
         visualClone.Name = VisualCloneName;
         visualClone.MouseFilter = Control.MouseFilterEnum.Ignore;
 
-        HideTextNodes(visualClone);
+        RemoveNonBackgroundChildren(visualClone);
         AddOverlayLabel(visualClone);
 
         return visualClone;
     }
 
-    private static void HideTextNodes(Node node)
+    private static void RemoveNonBackgroundChildren(Node node)
     {
-        ClearTextProperty(node);
-
-        foreach (Node child in node.GetChildren())
+        foreach (Node child in node.GetChildren().ToArray())
         {
-            HideTextNodes(child);
+            if (IsLikelyBackgroundNode(child))
+            {
+                RemoveNonBackgroundChildren(child);
+                continue;
+            }
+
+            child.QueueFree();
         }
     }
 
-    private static void ClearTextProperty(Node node)
+    private static bool IsLikelyBackgroundNode(Node node)
     {
-        PropertyInfo? textProperty = node.GetType().GetProperty("Text");
-        if (textProperty?.PropertyType == typeof(string) && textProperty.CanWrite)
-        {
-            textProperty.SetValue(node, string.Empty);
-        }
+        string typeName = node.GetType().Name;
+
+        return node is ColorRect ||
+               node is NinePatchRect ||
+               node is Panel ||
+               typeName.Contains("Background", StringComparison.OrdinalIgnoreCase) ||
+               typeName.Contains("Panel", StringComparison.OrdinalIgnoreCase);
     }
 
     private static void AddOverlayLabel(Control visualClone)
