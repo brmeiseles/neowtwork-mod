@@ -11,7 +11,8 @@ internal static class VanillaProgressImportAssistant
 {
     private const string DialogName = "NeowtworkVanillaProgressImportDialog";
     private const string MarkerFileName = "vanilla_import_markers.txt";
-    private const long MinimumMeaningfulBytes = 256;
+    private const long MinimumMeaningfulProgressBytes = 4096;
+    private const long MinimumMeaningfulProfileBytes = 32768;
 
     private static readonly HashSet<string> DismissedThisSession = [];
 
@@ -356,15 +357,19 @@ internal static class VanillaProgressImportAssistant
         }
     }
 
-    private sealed record ProfileStats(bool Exists, int FileCount, int HistoryFileCount, long TotalBytes)
+    private sealed record ProfileStats(bool Exists, int FileCount, int HistoryFileCount, long TotalBytes, long ProgressBytes)
     {
-        public bool HasMeaningfulData => Exists && FileCount > 0 && TotalBytes >= MinimumMeaningfulBytes;
+        public bool HasMeaningfulData =>
+            Exists &&
+            (HistoryFileCount > 0 ||
+             ProgressBytes >= MinimumMeaningfulProgressBytes ||
+             TotalBytes >= MinimumMeaningfulProfileBytes);
 
         public static ProfileStats FromDirectory(DirectoryInfo directory)
         {
             if (!directory.Exists)
             {
-                return new ProfileStats(false, 0, 0, 0);
+                return new ProfileStats(false, 0, 0, 0, 0);
             }
 
             FileInfo[] files = directory
@@ -374,12 +379,16 @@ internal static class VanillaProgressImportAssistant
 
             int historyFileCount = files.Count(file =>
                 file.DirectoryName?.Split(Path.DirectorySeparatorChar).Contains("history", StringComparer.OrdinalIgnoreCase) == true);
+            long progressBytes = files
+                .Where(file => file.Name.Equals("progress.save", StringComparison.OrdinalIgnoreCase))
+                .Sum(file => file.Length);
 
             return new ProfileStats(
                 Exists: true,
                 FileCount: files.Length,
                 HistoryFileCount: historyFileCount,
-                TotalBytes: files.Sum(file => file.Length));
+                TotalBytes: files.Sum(file => file.Length),
+                ProgressBytes: progressBytes);
         }
     }
 }
