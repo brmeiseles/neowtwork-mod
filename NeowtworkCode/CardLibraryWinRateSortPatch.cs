@@ -43,8 +43,9 @@ internal static class CardLibraryGridWinRateFilterPatch
 internal static class CardLibraryWinRateSort
 {
     private const string DropdownName = "NeowtworkStatsSortDropdown";
-    private const float DropdownWidth = 250f;
-    private const float DropdownHeight = 39f;
+    private const string MenuButtonName = "NeowtworkStatsSortMenuButton";
+    private const float MenuButtonWidth = 250f;
+    private const float MenuButtonHeight = 39f;
 
     private static readonly AccessTools.FieldRef<NCardLibrary, NCardLibraryGrid> GridRef =
         AccessTools.FieldRefAccess<NCardLibrary, NCardLibraryGrid>("_grid");
@@ -68,34 +69,35 @@ internal static class CardLibraryWinRateSort
 
         CacheDefaultOrder(grid);
 
-        if (alphabetSorter.GetNodeOrNull<OptionButton>(DropdownName) != null)
+        if (alphabetSorter.GetNodeOrNull<MenuButton>(MenuButtonName) != null)
         {
             return;
         }
 
-        OptionButton dropdown = new()
+        alphabetSorter.GetNodeOrNull<OptionButton>(DropdownName)?.QueueFree();
+
+        MenuButton menuButton = new()
         {
-            Name = DropdownName,
+            Name = MenuButtonName,
             Position = new Vector2(0f, 42f),
-            Size = new Vector2(DropdownWidth, DropdownHeight),
-            CustomMinimumSize = new Vector2(DropdownWidth, DropdownHeight),
+            Size = new Vector2(MenuButtonWidth, MenuButtonHeight),
+            CustomMinimumSize = new Vector2(MenuButtonWidth, MenuButtonHeight),
             FocusMode = Control.FocusModeEnum.None,
-            MouseDefaultCursorShape = Control.CursorShape.PointingHand,
-            FitToLongestItem = false,
-            AllowReselect = true
+            MouseDefaultCursorShape = Control.CursorShape.PointingHand
         };
 
+        PopupMenu popup = menuButton.GetPopup();
         foreach (StatSortMetric metric in Enum.GetValues<StatSortMetric>())
         {
-            dropdown.AddItem(GetDropdownLabel(metric), (int)metric);
+            popup.AddRadioCheckItem(GetMetricLabel(metric), (int)metric);
         }
 
-        StyleDropdown(dropdown);
-        SelectDropdownMetric(dropdown, GetSortState(grid).Metric);
+        StyleDropdown(menuButton);
+        UpdateMenuButtonState(menuButton, grid);
 
-        dropdown.ItemSelected += index =>
+        popup.IdPressed += id =>
         {
-            StatSortMetric metric = (StatSortMetric)dropdown.GetItemId((int)index);
+            StatSortMetric metric = (StatSortMetric)id;
             StatSortState currentState = GetSortState(grid);
             bool isSameMetric = currentState.IsActive && currentState.Metric == metric;
 
@@ -104,12 +106,12 @@ internal static class CardLibraryWinRateSort
                 Metric: metric,
                 IsReversed: isSameMetric && !currentState.IsReversed);
 
-            SelectDropdownMetric(dropdown, metric);
+            UpdateMenuButtonState(menuButton, grid);
             CacheDefaultOrder(grid);
             DisplayCardsMethod.Invoke(library, null);
         };
 
-        alphabetSorter.AddChild(dropdown);
+        alphabetSorter.AddChild(menuButton);
     }
 
     public static bool IsWinRateSortActive(NCardLibraryGrid grid)
@@ -209,16 +211,21 @@ internal static class CardLibraryWinRateSort
         }
     }
 
-    private static void SelectDropdownMetric(OptionButton dropdown, StatSortMetric metric)
+    private static void UpdateMenuButtonState(MenuButton menuButton, NCardLibraryGrid grid)
     {
-        int itemIndex = dropdown.GetItemIndex((int)metric);
-        if (itemIndex >= 0)
+        StatSortState state = GetSortState(grid);
+        menuButton.Text = state.IsActive
+            ? $"{GetMetricLabel(state.Metric)} {(state.IsReversed ? "↑" : "↓")}"
+            : "Card Stats";
+
+        PopupMenu popup = menuButton.GetPopup();
+        for (int index = 0; index < popup.ItemCount; index++)
         {
-            dropdown.Select(itemIndex);
+            popup.SetItemChecked(index, state.IsActive && popup.GetItemId(index) == (int)state.Metric);
         }
     }
 
-    private static void StyleDropdown(OptionButton dropdown)
+    private static void StyleDropdown(MenuButton dropdown)
     {
         dropdown.AddThemeFontSizeOverride("font_size", 20);
         dropdown.AddThemeColorOverride("font_color", new Color(0.95f, 0.83f, 0.35f));
@@ -271,18 +278,18 @@ internal static class CardLibraryWinRateSort
             : new StatSortState(IsActive: false, Metric: StatSortMetric.WinRate, IsReversed: false);
     }
 
-    private static string GetDropdownLabel(StatSortMetric metric)
+    private static string GetMetricLabel(StatSortMetric metric)
     {
         return metric switch
         {
-            StatSortMetric.WinRate => "Card Stats: Win Rate",
-            StatSortMetric.PickRate => "Card Stats: Pick Rate",
-            StatSortMetric.Victories => "Card Stats: Victories",
-            StatSortMetric.Losses => "Card Stats: Losses",
-            StatSortMetric.Picked => "Card Stats: Picked",
-            StatSortMetric.Skipped => "Card Stats: Skipped",
-            StatSortMetric.Seen => "Card Stats: Seen",
-            _ => "Card Stats ▼"
+            StatSortMetric.WinRate => "Win Rate",
+            StatSortMetric.PickRate => "Pick Rate",
+            StatSortMetric.Victories => "Victories",
+            StatSortMetric.Losses => "Losses",
+            StatSortMetric.Picked => "Picked",
+            StatSortMetric.Skipped => "Skipped",
+            StatSortMetric.Seen => "Seen",
+            _ => "Card Stats"
         };
     }
 
