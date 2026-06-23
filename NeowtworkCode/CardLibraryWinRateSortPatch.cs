@@ -44,9 +44,10 @@ internal static class CardLibraryWinRateSort
 {
     private const string DropdownName = "NeowtworkStatsSortDropdown";
     private const string MenuButtonName = "NeowtworkStatsSortMenuButton";
+    private const string VisualCloneName = "NeowtworkStatsSortVisualClone";
+    private const string OverlayLabelName = "NeowtworkStatsSortOverlayLabel";
     private const float DefaultMenuButtonWidth = 280f;
-    private const float MenuButtonHeight = 42f;
-    private const float MenuButtonVerticalOffset = 43f;
+    private const float MenuButtonVerticalOffset = 46f;
 
     private static readonly AccessTools.FieldRef<NCardLibrary, NCardLibraryGrid> GridRef =
         AccessTools.FieldRefAccess<NCardLibrary, NCardLibraryGrid>("_grid");
@@ -80,18 +81,30 @@ internal static class CardLibraryWinRateSort
 
         alphabetSorter.GetNodeOrNull<OptionButton>(DropdownName)?.QueueFree();
         alphabetSorter.GetNodeOrNull<MenuButton>(MenuButtonName)?.QueueFree();
+        menuParent.GetNodeOrNull<Control>(VisualCloneName)?.QueueFree();
         float menuButtonWidth = alphabetSorter.Size.X > 0f ? alphabetSorter.Size.X : DefaultMenuButtonWidth;
+        float menuButtonHeight = alphabetSorter.Size.Y > 0f ? alphabetSorter.Size.Y : 42f;
+        Vector2 controlPosition = sidebar == null
+            ? new Vector2(0f, MenuButtonVerticalOffset)
+            : alphabetSorter.Position + new Vector2(0f, MenuButtonVerticalOffset);
+
+        Control visualClone = CreateVisualClone(alphabetSorter);
+        visualClone.Position = controlPosition;
+        visualClone.Size = new Vector2(menuButtonWidth, menuButtonHeight);
+        visualClone.CustomMinimumSize = new Vector2(menuButtonWidth, menuButtonHeight);
+        visualClone.ZIndex = alphabetSorter.ZIndex + 1;
+        ResizeOverlayLabel(visualClone);
+        menuParent.AddChild(visualClone);
 
         MenuButton menuButton = new()
         {
             Name = MenuButtonName,
-            Position = sidebar == null
-                ? new Vector2(0f, MenuButtonVerticalOffset)
-                : alphabetSorter.Position + new Vector2(0f, MenuButtonVerticalOffset),
-            Size = new Vector2(menuButtonWidth, MenuButtonHeight),
-            CustomMinimumSize = new Vector2(menuButtonWidth, MenuButtonHeight),
+            Position = controlPosition,
+            Size = new Vector2(menuButtonWidth, menuButtonHeight),
+            CustomMinimumSize = new Vector2(menuButtonWidth, menuButtonHeight),
             FocusMode = Control.FocusModeEnum.None,
-            ZIndex = alphabetSorter.ZIndex + 1,
+            ZIndex = alphabetSorter.ZIndex + 2,
+            Flat = true,
             MouseDefaultCursorShape = Control.CursorShape.PointingHand
         };
 
@@ -102,7 +115,7 @@ internal static class CardLibraryWinRateSort
         }
 
         StyleDropdown(menuButton);
-        UpdateMenuButtonState(menuButton, grid);
+        UpdateMenuButtonState(menuButton, visualClone, grid);
 
         popup.IdPressed += id =>
         {
@@ -115,7 +128,7 @@ internal static class CardLibraryWinRateSort
                 Metric: metric,
                 IsReversed: isSameMetric && !currentState.IsReversed);
 
-            UpdateMenuButtonState(menuButton, grid);
+            UpdateMenuButtonState(menuButton, visualClone, grid);
             CacheDefaultOrder(grid);
             DisplayCardsMethod.Invoke(library, null);
         };
@@ -220,12 +233,19 @@ internal static class CardLibraryWinRateSort
         }
     }
 
-    private static void UpdateMenuButtonState(MenuButton menuButton, NCardLibraryGrid grid)
+    private static void UpdateMenuButtonState(MenuButton menuButton, Control visualClone, NCardLibraryGrid grid)
     {
         StatSortState state = GetSortState(grid);
-        menuButton.Text = state.IsActive
+        string labelText = state.IsActive
             ? $"{GetMetricLabel(state.Metric)}  {(state.IsReversed ? "↑" : "↓")}"
             : "Card Stats";
+        menuButton.Text = labelText;
+
+        Label? overlayLabel = visualClone.GetNodeOrNull<Label>(OverlayLabelName);
+        if (overlayLabel != null)
+        {
+            overlayLabel.Text = labelText;
+        }
 
         PopupMenu popup = menuButton.GetPopup();
         for (int index = 0; index < popup.ItemCount; index++)
@@ -234,19 +254,81 @@ internal static class CardLibraryWinRateSort
         }
     }
 
+    private static Control CreateVisualClone(NCardViewSortButton alphabetSorter)
+    {
+        Node duplicatedNode = alphabetSorter.Duplicate((int)Node.DuplicateFlags.Groups);
+        Control visualClone = duplicatedNode as Control ?? new Control();
+        visualClone.Name = VisualCloneName;
+        visualClone.MouseFilter = Control.MouseFilterEnum.Ignore;
+
+        HideTextNodes(visualClone);
+        AddOverlayLabel(visualClone);
+
+        return visualClone;
+    }
+
+    private static void HideTextNodes(Node node)
+    {
+        ClearTextProperty(node);
+
+        foreach (Node child in node.GetChildren())
+        {
+            HideTextNodes(child);
+        }
+    }
+
+    private static void ClearTextProperty(Node node)
+    {
+        PropertyInfo? textProperty = node.GetType().GetProperty("Text");
+        if (textProperty?.PropertyType == typeof(string) && textProperty.CanWrite)
+        {
+            textProperty.SetValue(node, string.Empty);
+        }
+    }
+
+    private static void AddOverlayLabel(Control visualClone)
+    {
+        Label label = new()
+        {
+            Name = OverlayLabelName,
+            Text = "Card Stats",
+            Position = new Vector2(18f, 2f),
+            Size = visualClone.Size,
+            MouseFilter = Control.MouseFilterEnum.Ignore,
+            HorizontalAlignment = HorizontalAlignment.Left,
+            VerticalAlignment = VerticalAlignment.Center
+        };
+
+        label.AddThemeFontSizeOverride("font_size", 26);
+        label.AddThemeColorOverride("font_color", new Color(0.95f, 0.83f, 0.35f));
+        label.AddThemeColorOverride("font_outline_color", new Color(0.09f, 0.14f, 0.15f));
+        label.AddThemeConstantOverride("outline_size", 4);
+
+        visualClone.AddChild(label);
+    }
+
+    private static void ResizeOverlayLabel(Control visualClone)
+    {
+        Label? overlayLabel = visualClone.GetNodeOrNull<Label>(OverlayLabelName);
+        if (overlayLabel != null)
+        {
+            overlayLabel.Size = visualClone.Size;
+        }
+    }
+
     private static void StyleDropdown(MenuButton dropdown)
     {
         dropdown.Alignment = HorizontalAlignment.Left;
         dropdown.AddThemeFontSizeOverride("font_size", 26);
-        dropdown.AddThemeColorOverride("font_color", new Color(0.95f, 0.83f, 0.35f));
-        dropdown.AddThemeColorOverride("font_hover_color", new Color(1f, 0.93f, 0.58f));
-        dropdown.AddThemeColorOverride("font_pressed_color", new Color(1f, 0.93f, 0.58f));
-        dropdown.AddThemeColorOverride("font_outline_color", new Color(0.09f, 0.14f, 0.15f));
-        dropdown.AddThemeConstantOverride("outline_size", 4);
+        dropdown.AddThemeColorOverride("font_color", Colors.Transparent);
+        dropdown.AddThemeColorOverride("font_hover_color", Colors.Transparent);
+        dropdown.AddThemeColorOverride("font_pressed_color", Colors.Transparent);
+        dropdown.AddThemeColorOverride("font_outline_color", Colors.Transparent);
+        dropdown.AddThemeConstantOverride("outline_size", 0);
 
-        dropdown.AddThemeStyleboxOverride("normal", CreateSortHeaderStyle(new Color(0.12f, 0.38f, 0.39f), 0f));
-        dropdown.AddThemeStyleboxOverride("hover", CreateSortHeaderStyle(new Color(0.15f, 0.45f, 0.47f), 0f));
-        dropdown.AddThemeStyleboxOverride("pressed", CreateSortHeaderStyle(new Color(0.09f, 0.31f, 0.33f), 1f));
+        dropdown.AddThemeStyleboxOverride("normal", new StyleBoxEmpty());
+        dropdown.AddThemeStyleboxOverride("hover", new StyleBoxEmpty());
+        dropdown.AddThemeStyleboxOverride("pressed", new StyleBoxEmpty());
         dropdown.AddThemeStyleboxOverride("focus", new StyleBoxEmpty());
 
         PopupMenu popup = dropdown.GetPopup();
