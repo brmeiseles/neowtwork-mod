@@ -192,9 +192,11 @@ Selecting the same stat sort twice should reverse the exact sort order.
 ## Git hygiene
 
 - Commit logical milestones.
+- After a successful build or verification pass, push commits to `origin/main` unless the user explicitly asks to keep changes local.
+- Do not push broken builds, save-file experiments, local-only paths, packaged zips, logs, or backups.
+- If a change is experimental or visually uncertain, commit and push only after the smallest reasonable validation has passed.
 - Do not commit local saves, logs, backups, or packaged zips.
 - Keep generated Godot `.uid` files for tracked scripts if Godot creates them.
-- Push source changes to `origin/main` after verified milestones.
 
 ## Verification
 
