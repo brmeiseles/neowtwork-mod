@@ -19,7 +19,7 @@ internal static class CardLibraryStatsReadyPatch
 [HarmonyPatch(typeof(NCardLibraryStats), nameof(NCardLibraryStats.UpdateStats))]
 internal static class CardLibraryStatsPatch
 {
-    private const float OverlayHeight = 148f;
+    private const float OverlayHeight = 172f;
     private const float LabelTopPadding = 8f;
 
     private static readonly AccessTools.FieldRef<NCardLibraryStats, MegaRichTextLabel> LabelRef =
@@ -35,14 +35,14 @@ internal static class CardLibraryStatsPatch
         long skipped = stats?.TimesSkipped ?? 0;
         long finishedRuns = victories + losses;
         long seen = picked + skipped;
-        string winRate = finishedRuns == 0 ? "— WR" : $"{(double)victories / finishedRuns:P0} WR";
-        string pickRate = seen == 0 ? "— Pick" : $"{(double)picked / seen:P0} Pick";
+        string winRate = finishedRuns == 0 ? "— Win Rate" : $"{(double)victories / finishedRuns:P0} Win Rate";
+        string pickRate = seen == 0 ? "— Pick Rate" : $"{(double)picked / seen:P0} Pick Rate";
 
         LabelRef(__instance).Text =
             $"{winRate}\n" +
-            $"({victories}-{losses})\n\n" +
+            $"({victories} {Pluralize(victories, "victory", "victories")} - {losses} {Pluralize(losses, "loss", "losses")})\n\n" +
             $"{pickRate}\n" +
-            $"({picked}/{seen})";
+            $"({picked} {Pluralize(picked, "pick", "picks")} / {seen} seen)";
 
         ConfigureOverlay(__instance);
 
@@ -73,5 +73,10 @@ internal static class CardLibraryStatsPatch
 
             ConfigureBackground(child);
         }
+    }
+
+    private static string Pluralize(long count, string singular, string plural)
+    {
+        return count == 1 ? singular : plural;
     }
 }
