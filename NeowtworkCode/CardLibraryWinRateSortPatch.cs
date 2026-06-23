@@ -44,8 +44,9 @@ internal static class CardLibraryWinRateSort
 {
     private const string DropdownName = "NeowtworkStatsSortDropdown";
     private const string MenuButtonName = "NeowtworkStatsSortMenuButton";
-    private const float MenuButtonWidth = 250f;
-    private const float MenuButtonHeight = 39f;
+    private const float DefaultMenuButtonWidth = 280f;
+    private const float MenuButtonHeight = 42f;
+    private const float MenuButtonVerticalOffset = 43f;
 
     private static readonly AccessTools.FieldRef<NCardLibrary, NCardLibraryGrid> GridRef =
         AccessTools.FieldRefAccess<NCardLibrary, NCardLibraryGrid>("_grid");
@@ -69,20 +70,28 @@ internal static class CardLibraryWinRateSort
 
         CacheDefaultOrder(grid);
 
-        if (alphabetSorter.GetNodeOrNull<MenuButton>(MenuButtonName) != null)
+        Control? sidebar = alphabetSorter.GetParent() as Control;
+        Control menuParent = sidebar ?? alphabetSorter;
+
+        if (menuParent.GetNodeOrNull<MenuButton>(MenuButtonName) != null)
         {
             return;
         }
 
         alphabetSorter.GetNodeOrNull<OptionButton>(DropdownName)?.QueueFree();
+        alphabetSorter.GetNodeOrNull<MenuButton>(MenuButtonName)?.QueueFree();
+        float menuButtonWidth = alphabetSorter.Size.X > 0f ? alphabetSorter.Size.X : DefaultMenuButtonWidth;
 
         MenuButton menuButton = new()
         {
             Name = MenuButtonName,
-            Position = new Vector2(0f, 42f),
-            Size = new Vector2(MenuButtonWidth, MenuButtonHeight),
-            CustomMinimumSize = new Vector2(MenuButtonWidth, MenuButtonHeight),
+            Position = sidebar == null
+                ? new Vector2(0f, MenuButtonVerticalOffset)
+                : alphabetSorter.Position + new Vector2(0f, MenuButtonVerticalOffset),
+            Size = new Vector2(menuButtonWidth, MenuButtonHeight),
+            CustomMinimumSize = new Vector2(menuButtonWidth, MenuButtonHeight),
             FocusMode = Control.FocusModeEnum.None,
+            ZIndex = alphabetSorter.ZIndex + 1,
             MouseDefaultCursorShape = Control.CursorShape.PointingHand
         };
 
@@ -111,7 +120,7 @@ internal static class CardLibraryWinRateSort
             DisplayCardsMethod.Invoke(library, null);
         };
 
-        alphabetSorter.AddChild(menuButton);
+        menuParent.AddChild(menuButton);
     }
 
     public static bool IsWinRateSortActive(NCardLibraryGrid grid)
@@ -215,7 +224,7 @@ internal static class CardLibraryWinRateSort
     {
         StatSortState state = GetSortState(grid);
         menuButton.Text = state.IsActive
-            ? $"{GetMetricLabel(state.Metric)} {(state.IsReversed ? "↑" : "↓")}"
+            ? $"{GetMetricLabel(state.Metric)}  {(state.IsReversed ? "↑" : "↓")}"
             : "Card Stats";
 
         PopupMenu popup = menuButton.GetPopup();
@@ -227,16 +236,17 @@ internal static class CardLibraryWinRateSort
 
     private static void StyleDropdown(MenuButton dropdown)
     {
-        dropdown.AddThemeFontSizeOverride("font_size", 20);
+        dropdown.Alignment = HorizontalAlignment.Left;
+        dropdown.AddThemeFontSizeOverride("font_size", 26);
         dropdown.AddThemeColorOverride("font_color", new Color(0.95f, 0.83f, 0.35f));
         dropdown.AddThemeColorOverride("font_hover_color", new Color(1f, 0.93f, 0.58f));
         dropdown.AddThemeColorOverride("font_pressed_color", new Color(1f, 0.93f, 0.58f));
         dropdown.AddThemeColorOverride("font_outline_color", new Color(0.09f, 0.14f, 0.15f));
         dropdown.AddThemeConstantOverride("outline_size", 4);
 
-        dropdown.AddThemeStyleboxOverride("normal", CreatePanelStyle(new Color(0.13f, 0.39f, 0.42f), 0f));
-        dropdown.AddThemeStyleboxOverride("hover", CreatePanelStyle(new Color(0.16f, 0.47f, 0.50f), 0f));
-        dropdown.AddThemeStyleboxOverride("pressed", CreatePanelStyle(new Color(0.10f, 0.32f, 0.35f), 1f));
+        dropdown.AddThemeStyleboxOverride("normal", CreateSortHeaderStyle(new Color(0.12f, 0.38f, 0.39f), 0f));
+        dropdown.AddThemeStyleboxOverride("hover", CreateSortHeaderStyle(new Color(0.15f, 0.45f, 0.47f), 0f));
+        dropdown.AddThemeStyleboxOverride("pressed", CreateSortHeaderStyle(new Color(0.09f, 0.31f, 0.33f), 1f));
         dropdown.AddThemeStyleboxOverride("focus", new StyleBoxEmpty());
 
         PopupMenu popup = dropdown.GetPopup();
@@ -245,27 +255,29 @@ internal static class CardLibraryWinRateSort
         popup.AddThemeColorOverride("font_hover_color", new Color(1f, 0.93f, 0.58f));
         popup.AddThemeColorOverride("font_outline_color", new Color(0.09f, 0.14f, 0.15f));
         popup.AddThemeConstantOverride("outline_size", 3);
-        popup.AddThemeStyleboxOverride("panel", CreatePanelStyle(new Color(0.10f, 0.27f, 0.30f), 0f));
-        popup.AddThemeStyleboxOverride("hover", CreatePanelStyle(new Color(0.16f, 0.47f, 0.50f), 0f));
+        popup.AddThemeStyleboxOverride("panel", CreateSortHeaderStyle(new Color(0.10f, 0.27f, 0.30f), 0f));
+        popup.AddThemeStyleboxOverride("hover", CreateSortHeaderStyle(new Color(0.16f, 0.47f, 0.50f), 0f));
     }
 
-    private static StyleBoxFlat CreatePanelStyle(Color color, float contentOffsetY)
+    private static StyleBoxFlat CreateSortHeaderStyle(Color color, float contentOffsetY)
     {
         StyleBoxFlat style = new()
         {
             BgColor = color,
-            CornerRadiusTopLeft = 9,
-            CornerRadiusTopRight = 9,
-            CornerRadiusBottomLeft = 9,
-            CornerRadiusBottomRight = 9,
-            BorderWidthTop = 1,
-            BorderWidthLeft = 1,
-            BorderWidthRight = 1,
+            CornerRadiusTopLeft = 8,
+            CornerRadiusTopRight = 8,
+            CornerRadiusBottomLeft = 8,
+            CornerRadiusBottomRight = 8,
+            BorderWidthTop = 2,
+            BorderWidthLeft = 2,
+            BorderWidthRight = 2,
             BorderWidthBottom = 2,
-            BorderColor = new Color(0.05f, 0.25f, 0.28f),
+            BorderColor = new Color(0.04f, 0.25f, 0.27f),
             ShadowColor = new Color(0f, 0f, 0f, 0.45f),
             ShadowSize = 3,
-            ContentMarginTop = contentOffsetY
+            ContentMarginTop = contentOffsetY,
+            ContentMarginLeft = 12f,
+            ContentMarginRight = 12f
         };
 
         return style;
