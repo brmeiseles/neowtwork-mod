@@ -49,6 +49,28 @@ Keep the spirit of the game alive: small, readable, native-feeling improvements 
 
 ## In-run quality of life
 
+- Show card stats while making card choices.
+  - Add a persistent `Show card stats` checkbox below the `Skip` button on card reward screens.
+  - Default to off for a clean vanilla-like first impression.
+  - Remember the player's choice between sessions.
+  - When enabled, show the same compact Win Rate / Pick Rate overlay used in the Card Library.
+  - Prioritize card reward screens first, then extend to shop card choices if the UI hook is safe.
+  - Avoid changing combat card views until explicitly designed.
+- Add future card stat display modes for choice screens.
+  - `Off`: never show stats.
+  - `On`: always show stats.
+  - `Hover`: show stats only while hovering a card, so players can still enjoy the card art.
+  - Start with the simpler checkbox version before introducing a three-state control.
+- Add shop analytics.
+  - Track what the player usually spends gold on:
+    - cards
+    - relics
+    - potions
+    - card removals
+    - other shop services if exposed by the game
+  - Show how often each purchase type or purchased item leads to a win.
+  - Prefer run-history parsing first if shop purchase events are present there.
+  - If run history is not enough, investigate safe hooks for shop purchase events without changing gameplay.
 - Add a single top-menu-bar button during runs that opens the Card Library quickly.
   - Goal: reduce clicks when checking card stats mid-run.
   - Prefer a small native-feeling button/icon that belongs with existing top bar controls.
