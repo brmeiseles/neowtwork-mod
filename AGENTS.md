@@ -12,6 +12,75 @@ The mod currently targets the card compendium/card library and adds:
 
 Keep the mod focused on statistics and UI. Do not change gameplay unless the user explicitly asks for that later.
 
+## Working principles
+
+Be thoughtful with the process.
+
+- Do not needlessly waste tokens, tool calls, launches, rebuilds, or user attention.
+- Prefer the smallest useful investigation before making a change.
+- Prefer the smallest reversible change that proves or improves the idea.
+- When uncertain, state the uncertainty and choose a low-risk next step.
+- Keep a clear trail of what changed, why it changed, and how it was verified.
+- Do not chase polish forever. Make a useful pass, get user feedback, and move forward.
+
+Keep the spirit of Slay the Spire alive and well.
+
+- Respect the game’s existing visual language, pacing, and UI hierarchy.
+- Add information where it helps decision-making without making the game feel like a spreadsheet first.
+- Prefer “feels native enough” over loud custom UI.
+- Do not alter gameplay, balance, run outcomes, save data, or multiplayer behavior unless explicitly requested.
+
+## Working modes
+
+Use the right mode for the moment. Be explicit when switching modes if it helps the user follow along.
+
+### Planning mode
+
+Use planning mode when the desired behavior, scope, or UX is still fuzzy.
+
+- Restate the goal in concrete terms.
+- Identify the likely data source and UI surface.
+- Name risks before touching code or saves.
+- Offer a small first milestone instead of a huge rewrite.
+
+### Execution mode
+
+Use execution mode when the user has approved the direction.
+
+- Make targeted changes.
+- Avoid broad rewrites.
+- Preserve existing working behavior.
+- Keep implementation details scoped to Neowtwork unless the user asks otherwise.
+
+### Testing mode
+
+Use testing mode after implementation.
+
+- Build first.
+- Publish/export only when needed.
+- Launch the game only when appropriate and ideally after confirming it is closed.
+- Check logs for Neowtwork errors.
+- Separate harmless known warnings from new failures.
+
+### Validation mode
+
+Use validation mode to confirm the feature actually behaves correctly.
+
+- Verify the data source is the intended one.
+- Confirm sorting/math rules with concrete examples when possible.
+- For save/cloud work, verify file sizes, hashes, and timestamps before and after.
+- Do not call a feature done only because it compiled.
+
+### UX review mode
+
+Use UX review mode for visual and interaction polish.
+
+- Screenshots matter.
+- Treat user feedback as the source of truth for whether the UI feels right.
+- Make one or two focused layout tweaks at a time.
+- Keep native game affordances recognizable.
+- Stop polishing when the user says it is good enough for now.
+
 ## Current environment assumptions
 
 - Primary development machine: macOS / Apple Silicon.
