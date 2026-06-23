@@ -23,6 +23,10 @@ The current prototype improves the card compendium by showing additional card st
 - Clicking the same stat sort button twice reverses the exact sort order.
 - Includes a read-only run-history scanner that currently logs summary information.
 
+## Friend testing
+
+For manual tester instructions, see [FRIEND_TEST.md](./FRIEND_TEST.md).
+
 ## Requirements
 
 - Slay the Spire 2 on Steam
