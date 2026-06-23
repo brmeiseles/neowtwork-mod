@@ -24,6 +24,10 @@ The current prototype improves the card compendium by showing compact card analy
 
 For manual tester instructions, see [FRIEND_TEST.md](./FRIEND_TEST.md).
 
+## Backlog
+
+For planned UX, analytics, sync, packaging, and release work, see [BACKLOG.md](./BACKLOG.md).
+
 ## Requirements
 
 - Slay the Spire 2 on Steam
