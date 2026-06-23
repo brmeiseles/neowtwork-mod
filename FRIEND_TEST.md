@@ -66,6 +66,26 @@ On macOS, that folder is usually inside the game app bundle:
 ~/Library/Application Support/Steam/steamapps/common/Slay the Spire 2/SlayTheSpire2.app/Contents/MacOS/mods/
 ```
 
+On Windows/PC, that folder is usually:
+
+```text
+C:\Program Files (x86)\Steam\steamapps\common\Slay the Spire 2\mods\
+```
+
+If your Steam library is on another drive, it may be something like:
+
+```text
+D:\SteamLibrary\steamapps\common\Slay the Spire 2\mods\
+```
+
+To find it from Steam:
+
+1. Right-click Slay the Spire 2 in your Steam Library.
+2. Choose `Manage`.
+3. Choose `Browse local files`.
+4. Create or open the `mods` folder there.
+5. Copy the `Neowtwork` folder into that `mods` folder.
+
 If the `mods` folder does not exist, create it.
 
 After installing, you should have something like:
