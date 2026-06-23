@@ -119,6 +119,24 @@ INSTALL.txt
 
 Do not include saves, logs, backups, `.godot`, build output folders, or local machine paths in release zips.
 
+## Versioning and changelog
+
+Use semantic versioning for Neowtwork releases.
+
+- `MAJOR` changes for incompatible save/import behavior, breaking config changes, or large public API/data-model shifts.
+- `MINOR` changes for new user-facing features, new stats, new sorting modes, new import flows, or meaningful UX additions.
+- `PATCH` changes for bug fixes, copy changes, small UX polish, packaging fixes, and non-breaking internal cleanup.
+- Pre-release identifiers may be used for friend testing, for example `0.2.0-test.1`.
+
+Keep the version in `Neowtwork.json` aligned with the current release version.
+
+Maintain `CHANGELOG.md` using a Keep-a-Changelog-style structure:
+
+- Add new work under `Unreleased` while developing.
+- Move completed release notes under a dated version heading when cutting a release.
+- Include practical user-facing notes, especially install, import, save, cloud, and tester-impacting changes.
+- Update the changelog before packaging a manual zip or publishing a GitHub/Workshop release.
+
 ## Save and Steam Cloud safety
 
 Be very careful with save files.

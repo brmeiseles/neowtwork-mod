@@ -29,6 +29,10 @@ For manual tester instructions, see [FRIEND_TEST.md](./FRIEND_TEST.md).
 
 For planned UX, analytics, sync, packaging, and release work, see [BACKLOG.md](./BACKLOG.md).
 
+## Changelog
+
+For version history, see [CHANGELOG.md](./CHANGELOG.md).
+
 ## Requirements
 
 - Slay the Spire 2 on Steam
