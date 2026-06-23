@@ -6,8 +6,8 @@ This repository contains `neowtwork-mod`, an early Slay the Spire 2 mod.
 
 The mod currently targets the card compendium/card library and adds:
 
-- expanded card stats overlays
-- compact card stat sorting buttons
+- compact card stats overlays
+- card stat sorting dropdown
 - a read-only run-history scanner used for local diagnostics
 
 Keep the mod focused on statistics and UI. Do not change gameplay unless the user explicitly asks for that later.
@@ -177,15 +177,17 @@ Keep first-pass UI changes small and reversible:
 - prefer compact controls in the sidebar
 - keep card overlay text readable
 
-The compact stat sort buttons currently mean:
+The card stat sorting dropdown includes:
 
-- `WR` = Win Rate
-- `V` = Victories
-- `L` = Losses
-- `P` = Picked
-- `S` = Skipped
+- Win Rate
+- Pick Rate
+- Victories
+- Losses
+- Picked
+- Skipped
+- Seen
 
-Clicking the same stat sort button twice should reverse the exact sort order.
+Selecting the same stat sort twice should reverse the exact sort order.
 
 ## Git hygiene
 

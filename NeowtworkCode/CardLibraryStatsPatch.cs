@@ -19,8 +19,8 @@ internal static class CardLibraryStatsReadyPatch
 [HarmonyPatch(typeof(NCardLibraryStats), nameof(NCardLibraryStats.UpdateStats))]
 internal static class CardLibraryStatsPatch
 {
-    private const float OverlayHeight = 255f;
-    private const float LabelTopPadding = 6f;
+    private const float OverlayHeight = 148f;
+    private const float LabelTopPadding = 8f;
 
     private static readonly AccessTools.FieldRef<NCardLibraryStats, MegaRichTextLabel> LabelRef =
         AccessTools.FieldRefAccess<NCardLibraryStats, MegaRichTextLabel>("_label");
@@ -35,17 +35,14 @@ internal static class CardLibraryStatsPatch
         long skipped = stats?.TimesSkipped ?? 0;
         long finishedRuns = victories + losses;
         long seen = picked + skipped;
-        string winRate = finishedRuns == 0 ? "—" : $"{(double)victories / finishedRuns:P0}";
-        string pickRate = seen == 0 ? "—" : $"{(double)picked / seen:P0}";
+        string winRate = finishedRuns == 0 ? "— WR" : $"{(double)victories / finishedRuns:P0} WR";
+        string pickRate = seen == 0 ? "— Pick" : $"{(double)picked / seen:P0} Pick";
 
         LabelRef(__instance).Text =
-            $"Victories: {victories}\n" +
-            $"Losses: {losses}\n" +
-            $"Win Rate: {winRate}\n" +
-            $"Picked: {picked}\n" +
-            $"Skipped: {skipped}\n" +
-            $"Seen: {seen}\n" +
-            $"Pick Rate: {pickRate}";
+            $"{winRate}\n" +
+            $"({victories}-{losses})\n\n" +
+            $"{pickRate}\n" +
+            $"({picked}/{seen})";
 
         ConfigureOverlay(__instance);
 
@@ -55,7 +52,7 @@ internal static class CardLibraryStatsPatch
     internal static void ConfigureOverlay(NCardLibraryStats statsNode)
     {
         MegaRichTextLabel label = LabelRef(statsNode);
-        label.AddThemeFontSizeOverride("normal_font_size", 20);
+        label.AddThemeFontSizeOverride("normal_font_size", 22);
         label.Position = new Vector2(label.Position.X, 0f);
         label.CustomMinimumSize = new Vector2(label.CustomMinimumSize.X, OverlayHeight - LabelTopPadding);
         label.Size = new Vector2(label.Size.X, OverlayHeight - LabelTopPadding);

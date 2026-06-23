@@ -42,9 +42,9 @@ internal static class CardLibraryGridWinRateFilterPatch
 
 internal static class CardLibraryWinRateSort
 {
-    private const string SortPadName = "NeowtworkStatsSortPad";
-    private const float ButtonSize = 34f;
-    private const float ButtonGap = 5f;
+    private const string DropdownName = "NeowtworkStatsSortDropdown";
+    private const float DropdownWidth = 250f;
+    private const float DropdownHeight = 39f;
 
     private static readonly AccessTools.FieldRef<NCardLibrary, NCardLibraryGrid> GridRef =
         AccessTools.FieldRefAccess<NCardLibrary, NCardLibraryGrid>("_grid");
@@ -68,26 +68,48 @@ internal static class CardLibraryWinRateSort
 
         CacheDefaultOrder(grid);
 
-        if (alphabetSorter.GetNodeOrNull<Control>(SortPadName) != null)
+        if (alphabetSorter.GetNodeOrNull<OptionButton>(DropdownName) != null)
         {
             return;
         }
 
-        Control sortPad = new()
+        OptionButton dropdown = new()
         {
-            Name = SortPadName,
-            Position = new Vector2(156f, -1f),
-            Size = new Vector2((ButtonSize * 2) + ButtonGap, (ButtonSize * 3) + (ButtonGap * 2)),
-            MouseFilter = Control.MouseFilterEnum.Pass
+            Name = DropdownName,
+            Position = new Vector2(0f, 42f),
+            Size = new Vector2(DropdownWidth, DropdownHeight),
+            CustomMinimumSize = new Vector2(DropdownWidth, DropdownHeight),
+            FocusMode = Control.FocusModeEnum.None,
+            MouseDefaultCursorShape = Control.CursorShape.PointingHand,
+            FitToLongestItem = false,
+            AllowReselect = true
         };
 
-        alphabetSorter.AddChild(sortPad);
+        foreach (StatSortMetric metric in Enum.GetValues<StatSortMetric>())
+        {
+            dropdown.AddItem(GetDropdownLabel(metric), (int)metric);
+        }
 
-        AddSortButton(sortPad, library, grid, "WR", StatSortMetric.WinRate, 0, 0);
-        AddSortButton(sortPad, library, grid, "V", StatSortMetric.Victories, 1, 0);
-        AddSortButton(sortPad, library, grid, "L", StatSortMetric.Losses, 0, 1);
-        AddSortButton(sortPad, library, grid, "P", StatSortMetric.Picked, 1, 1);
-        AddSortButton(sortPad, library, grid, "S", StatSortMetric.Skipped, 0, 2);
+        StyleDropdown(dropdown);
+        SelectDropdownMetric(dropdown, GetSortState(grid).Metric);
+
+        dropdown.ItemSelected += index =>
+        {
+            StatSortMetric metric = (StatSortMetric)dropdown.GetItemId((int)index);
+            StatSortState currentState = GetSortState(grid);
+            bool isSameMetric = currentState.IsActive && currentState.Metric == metric;
+
+            StatSortStateByGrid[grid] = new StatSortState(
+                IsActive: true,
+                Metric: metric,
+                IsReversed: isSameMetric && !currentState.IsReversed);
+
+            SelectDropdownMetric(dropdown, metric);
+            CacheDefaultOrder(grid);
+            DisplayCardsMethod.Invoke(library, null);
+        };
+
+        alphabetSorter.AddChild(dropdown);
     }
 
     public static bool IsWinRateSortActive(NCardLibraryGrid grid)
@@ -144,14 +166,19 @@ internal static class CardLibraryWinRateSort
     public static double GetSortValue(CardModel card, StatSortMetric metric)
     {
         CardStats? stats = GetCardStats(card);
+        long picked = stats?.TimesPicked ?? 0;
+        long skipped = stats?.TimesSkipped ?? 0;
+        long seen = picked + skipped;
 
         return metric switch
         {
             StatSortMetric.WinRate => GetWinRate(card),
+            StatSortMetric.PickRate => seen == 0 ? 0d : (double)picked / seen,
             StatSortMetric.Victories => stats?.TimesWon ?? 0,
             StatSortMetric.Losses => stats?.TimesLost ?? 0,
-            StatSortMetric.Picked => stats?.TimesPicked ?? 0,
-            StatSortMetric.Skipped => stats?.TimesSkipped ?? 0,
+            StatSortMetric.Picked => picked,
+            StatSortMetric.Skipped => skipped,
+            StatSortMetric.Seen => seen,
             _ => 0
         };
     }
@@ -182,67 +209,53 @@ internal static class CardLibraryWinRateSort
         }
     }
 
-    private static void AddSortButton(
-        Control sortPad,
-        NCardLibrary library,
-        NCardLibraryGrid grid,
-        string label,
-        StatSortMetric metric,
-        int column,
-        int row)
+    private static void SelectDropdownMetric(OptionButton dropdown, StatSortMetric metric)
     {
-        Button button = new()
+        int itemIndex = dropdown.GetItemIndex((int)metric);
+        if (itemIndex >= 0)
         {
-            Text = label,
-            Position = new Vector2(column * (ButtonSize + ButtonGap), row * (ButtonSize + ButtonGap)),
-            Size = new Vector2(ButtonSize, ButtonSize),
-            CustomMinimumSize = new Vector2(ButtonSize, ButtonSize),
-            FocusMode = Control.FocusModeEnum.None,
-            MouseDefaultCursorShape = Control.CursorShape.PointingHand
-        };
-
-        StyleSortButton(button);
-        button.Pressed += () =>
-        {
-            StatSortState currentState = GetSortState(grid);
-            StatSortStateByGrid[grid] = new StatSortState(
-                IsActive: true,
-                Metric: metric,
-                IsReversed: currentState.IsActive && currentState.Metric == metric && !currentState.IsReversed);
-
-            CacheDefaultOrder(grid);
-            DisplayCardsMethod.Invoke(library, null);
-        };
-
-        sortPad.AddChild(button);
+            dropdown.Select(itemIndex);
+        }
     }
 
-    private static void StyleSortButton(Button button)
+    private static void StyleDropdown(OptionButton dropdown)
     {
-        button.AddThemeFontSizeOverride("font_size", button.Text == "WR" ? 14 : 18);
-        button.AddThemeColorOverride("font_color", new Color(0.96f, 0.93f, 0.80f));
-        button.AddThemeColorOverride("font_hover_color", new Color(1f, 0.96f, 0.70f));
-        button.AddThemeColorOverride("font_pressed_color", new Color(1f, 0.96f, 0.70f));
-        button.AddThemeColorOverride("font_outline_color", new Color(0.09f, 0.14f, 0.15f));
-        button.AddThemeConstantOverride("outline_size", 4);
+        dropdown.AddThemeFontSizeOverride("font_size", 20);
+        dropdown.AddThemeColorOverride("font_color", new Color(0.95f, 0.83f, 0.35f));
+        dropdown.AddThemeColorOverride("font_hover_color", new Color(1f, 0.93f, 0.58f));
+        dropdown.AddThemeColorOverride("font_pressed_color", new Color(1f, 0.93f, 0.58f));
+        dropdown.AddThemeColorOverride("font_outline_color", new Color(0.09f, 0.14f, 0.15f));
+        dropdown.AddThemeConstantOverride("outline_size", 4);
 
-        button.AddThemeStyleboxOverride("normal", CreateTileStyle(new Color(0.20f, 0.44f, 0.50f), 0f));
-        button.AddThemeStyleboxOverride("hover", CreateTileStyle(new Color(0.25f, 0.55f, 0.62f), 0f));
-        button.AddThemeStyleboxOverride("pressed", CreateTileStyle(new Color(0.13f, 0.32f, 0.37f), 1f));
-        button.AddThemeStyleboxOverride("focus", new StyleBoxEmpty());
+        dropdown.AddThemeStyleboxOverride("normal", CreatePanelStyle(new Color(0.13f, 0.39f, 0.42f), 0f));
+        dropdown.AddThemeStyleboxOverride("hover", CreatePanelStyle(new Color(0.16f, 0.47f, 0.50f), 0f));
+        dropdown.AddThemeStyleboxOverride("pressed", CreatePanelStyle(new Color(0.10f, 0.32f, 0.35f), 1f));
+        dropdown.AddThemeStyleboxOverride("focus", new StyleBoxEmpty());
+
+        PopupMenu popup = dropdown.GetPopup();
+        popup.AddThemeFontSizeOverride("font_size", 18);
+        popup.AddThemeColorOverride("font_color", new Color(0.96f, 0.93f, 0.80f));
+        popup.AddThemeColorOverride("font_hover_color", new Color(1f, 0.93f, 0.58f));
+        popup.AddThemeColorOverride("font_outline_color", new Color(0.09f, 0.14f, 0.15f));
+        popup.AddThemeConstantOverride("outline_size", 3);
+        popup.AddThemeStyleboxOverride("panel", CreatePanelStyle(new Color(0.10f, 0.27f, 0.30f), 0f));
+        popup.AddThemeStyleboxOverride("hover", CreatePanelStyle(new Color(0.16f, 0.47f, 0.50f), 0f));
     }
 
-    private static StyleBoxFlat CreateTileStyle(Color color, float contentOffsetY)
+    private static StyleBoxFlat CreatePanelStyle(Color color, float contentOffsetY)
     {
         StyleBoxFlat style = new()
         {
             BgColor = color,
-            CornerRadiusTopLeft = 7,
-            CornerRadiusTopRight = 7,
-            CornerRadiusBottomLeft = 7,
-            CornerRadiusBottomRight = 7,
+            CornerRadiusTopLeft = 9,
+            CornerRadiusTopRight = 9,
+            CornerRadiusBottomLeft = 9,
+            CornerRadiusBottomRight = 9,
+            BorderWidthTop = 1,
+            BorderWidthLeft = 1,
+            BorderWidthRight = 1,
             BorderWidthBottom = 2,
-            BorderColor = new Color(0.08f, 0.26f, 0.30f),
+            BorderColor = new Color(0.05f, 0.25f, 0.28f),
             ShadowColor = new Color(0f, 0f, 0f, 0.45f),
             ShadowSize = 3,
             ContentMarginTop = contentOffsetY
@@ -258,13 +271,30 @@ internal static class CardLibraryWinRateSort
             : new StatSortState(IsActive: false, Metric: StatSortMetric.WinRate, IsReversed: false);
     }
 
+    private static string GetDropdownLabel(StatSortMetric metric)
+    {
+        return metric switch
+        {
+            StatSortMetric.WinRate => "Card Stats: Win Rate",
+            StatSortMetric.PickRate => "Card Stats: Pick Rate",
+            StatSortMetric.Victories => "Card Stats: Victories",
+            StatSortMetric.Losses => "Card Stats: Losses",
+            StatSortMetric.Picked => "Card Stats: Picked",
+            StatSortMetric.Skipped => "Card Stats: Skipped",
+            StatSortMetric.Seen => "Card Stats: Seen",
+            _ => "Card Stats ▼"
+        };
+    }
+
     public enum StatSortMetric
     {
         WinRate,
+        PickRate,
         Victories,
         Losses,
         Picked,
-        Skipped
+        Skipped,
+        Seen
     }
 
     private readonly record struct StatSortState(bool IsActive, StatSortMetric Metric, bool IsReversed);

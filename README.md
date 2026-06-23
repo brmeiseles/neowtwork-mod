@@ -2,25 +2,22 @@
 
 Neowtwork is an early Slay the Spire 2 statistics mod.
 
-The current prototype improves the card compendium by showing additional card stats and adding compact stat-based sorting controls.
+The current prototype improves the card compendium by showing compact card analytics and adding stat-based sorting controls.
 
 ## Current features
 
-- Expands the card compendium stat overlay with:
+- Adds a compact card compendium stat overlay:
+  - Win Rate with victory-loss record
+  - Pick Rate with picked-seen record
+- Adds a card-library stats dropdown for sorting by:
+  - Win Rate
+  - Pick Rate
   - Victories
   - Losses
-  - Win Rate
   - Picked
   - Skipped
   - Seen
-  - Pick Rate
-- Adds compact card-library stat sort buttons:
-  - `WR` = Win Rate
-  - `V` = Victories
-  - `L` = Losses
-  - `P` = Picked
-  - `S` = Skipped
-- Clicking the same stat sort button twice reverses the exact sort order.
+- Selecting the same stat sort twice reverses the exact sort order.
 - Includes a read-only run-history scanner that currently logs summary information.
 
 ## Friend testing

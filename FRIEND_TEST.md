@@ -10,23 +10,20 @@ This is a manual local test build, not a Steam Workshop release yet.
 
 In the card compendium, with `View Stats` enabled, cards should show:
 
+- Win Rate with a victory-loss record
+- Pick Rate with a picked-seen record
+
+The card library should also have a `Card Stats` sorting dropdown with:
+
+- Win Rate
+- Pick Rate
 - Victories
 - Losses
-- Win Rate
 - Picked
 - Skipped
 - Seen
-- Pick Rate
 
-The card library should also have compact stat sort buttons:
-
-- `WR` = Win Rate
-- `V` = Victories
-- `L` = Losses
-- `P` = Picked
-- `S` = Skipped
-
-Clicking the same sort button twice should reverse the order.
+Selecting the same sort twice should reverse the order.
 
 ## Requirements
 
