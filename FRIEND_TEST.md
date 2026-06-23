@@ -100,11 +100,13 @@ mods/
 
 1. Launch Slay the Spire 2.
 2. Confirm the game says it is running modded.
-3. If Neowtwork asks `Import base-game data?`, choose whether to import your vanilla progress into the modded profile.
+3. If Neowtwork asks `Import base-game data?`, take a screenshot, then choose whether to import your vanilla progress into the modded profile.
 4. Open the compendium/card library.
 5. Enable `View Stats`.
 6. Check a few cards.
 7. Try the `Card Stats` sorting dropdown.
+
+If you choose `Import` and the compendium does not update right away, fully quit and relaunch Slay the Spire 2, then check again.
 
 ## What to report back
 
@@ -114,12 +116,13 @@ Please send:
 - Did BaseLib load?
 - Did Neowtwork load?
 - Did Neowtwork ask to import base-game data?
-- If you chose Import, did your compendium/progress appear afterward?
+- If you chose Import, did it show `Import complete`?
+- If you chose Import, did your compendium/progress appear afterward, either immediately or after relaunch?
 - Did the compendium open?
 - Did the extra card stats show?
 - Did the `Card Stats` sorting dropdown work?
 - Did anything crash or look broken?
-- Screenshot if possible.
+- Screenshot if possible, especially of the import prompt, import result, and Card Library.
 
 ## Important note about progress
 
@@ -129,6 +132,7 @@ If your modded profile looks empty or the compendium is locked, your vanilla pro
 
 Neowtwork may offer to import base-game data. This copies your vanilla profile into the matching modded profile after creating a backup.
 
+- You may not see the import prompt if your modded profile already has progress, or if your vanilla profile does not appear to have meaningful progress yet. That is okay.
 - Choosing `Import` creates a backup first, then copies vanilla progress and run history into modded.
 - Choosing `Not Now` does not change save files.
 - Neowtwork does not copy modded data back into vanilla.
