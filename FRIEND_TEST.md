@@ -103,7 +103,7 @@ mods/
 3. Open the compendium/card library.
 4. Enable `View Stats`.
 5. Check a few cards.
-6. Try the stat sort buttons: `WR`, `V`, `L`, `P`, `S`.
+6. Try the `Card Stats` sorting dropdown.
 
 ## What to report back
 
@@ -114,7 +114,7 @@ Please send:
 - Did Neowtwork load?
 - Did the compendium open?
 - Did the extra card stats show?
-- Did the stat sort buttons work?
+- Did the `Card Stats` sorting dropdown work?
 - Did anything crash or look broken?
 - Screenshot if possible.
 
