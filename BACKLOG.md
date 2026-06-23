@@ -47,6 +47,15 @@ Keep the spirit of the game alive: small, readable, native-feeling improvements 
   - New selection: reset to high-to-low.
 - Confirm secondary sort remains stable and native-feeling.
 
+## In-run quality of life
+
+- Add a single top-menu-bar button during runs that opens the Card Library quickly.
+  - Goal: reduce clicks when checking card stats mid-run.
+  - Prefer a small native-feeling button/icon that belongs with existing top bar controls.
+  - Avoid covering or disrupting existing run UI, multiplayer UI, map controls, or settings controls.
+  - Decide whether the Card Library should open read-only and return cleanly to the current run screen.
+  - Confirm it works safely during combat, rewards, shops, events, and map screens before release.
+
 ## Data and analytics
 
 - Keep using built-in card stats where possible:
