@@ -6,14 +6,21 @@ Neowtwork uses semantic versioning.
 
 ## Unreleased
 
+## 0.1.1 - 2026-06-23
+
 ### Added
 
 - Backlog tracking for planned UX, analytics, import, packaging, and release work.
 - Planned in-run Card Library shortcut backlog item.
+- Planned card reward/shop stats toggle and shop analytics backlog items.
 
 ### Changed
 
 - Ongoing Card Stats sorter closed-state polish.
+
+### Fixed
+
+- Stabilized the Card Stats sort row so the visible row and clickable target are the same control.
 
 ## 0.1.0 - 2026-06-23
 
@@ -51,4 +58,3 @@ Neowtwork uses semantic versioning.
 
 - Tightened import prompt eligibility so tiny placeholder profiles do not trigger import.
 - Improved Card Stats sort row click target.
-
