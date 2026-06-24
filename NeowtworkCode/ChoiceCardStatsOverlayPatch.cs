@@ -104,7 +104,7 @@ internal static class ChoiceCardStatsOverlay
     private const float OverlayWidth = 270f;
     private const float OverlayHeight = 172f;
     private const float OverlayX = 15f;
-    private const float OverlayY = 56f;
+    private const float OverlayY = -165f;
     private const float LabelTopPadding = 8f;
 
     private static readonly HashSet<NCard> HoveredCards = [];
@@ -124,6 +124,7 @@ internal static class ChoiceCardStatsOverlay
         }
 
         Control overlay = EnsureOverlay(card);
+        ConfigureOverlay(overlay);
         Label label = overlay.GetNode<Label>("Label");
         label.Text = CardStatsText.Build(card.Model);
         overlay.Visible = mode == NeowtworkConfig.ChoiceCardStatsDisplayMode.Show ||
@@ -160,15 +161,13 @@ internal static class ChoiceCardStatsOverlay
         Control? existing = card.GetNodeOrNull<Control>(OverlayName);
         if (existing != null)
         {
+            ConfigureOverlay(existing);
             return existing;
         }
 
         Control overlay = new()
         {
             Name = OverlayName,
-            Position = new Vector2(OverlayX, OverlayY),
-            Size = new Vector2(OverlayWidth, OverlayHeight),
-            CustomMinimumSize = new Vector2(OverlayWidth, OverlayHeight),
             MouseFilter = Control.MouseFilterEnum.Ignore,
             ZIndex = 200
         };
@@ -198,8 +197,29 @@ internal static class ChoiceCardStatsOverlay
         label.AddThemeConstantOverride("outline_size", 3);
         overlay.AddChild(label);
 
+        ConfigureOverlay(overlay);
         card.AddChild(overlay);
         return overlay;
+    }
+
+    private static void ConfigureOverlay(Control overlay)
+    {
+        overlay.Position = new Vector2(OverlayX, OverlayY);
+        overlay.Size = new Vector2(OverlayWidth, OverlayHeight);
+        overlay.CustomMinimumSize = new Vector2(OverlayWidth, OverlayHeight);
+
+        if (overlay.GetNodeOrNull<ColorRect>("Background") is { } background)
+        {
+            background.Position = Vector2.Zero;
+            background.Size = overlay.Size;
+        }
+
+        if (overlay.GetNodeOrNull<Label>("Label") is { } label)
+        {
+            label.Position = new Vector2(4f, 0f);
+            label.Size = new Vector2(OverlayWidth - 8f, OverlayHeight - LabelTopPadding);
+            label.AddThemeFontSizeOverride("font_size", 22);
+        }
     }
 
     private static void Remove(NCard card)
