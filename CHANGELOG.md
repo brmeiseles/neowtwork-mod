@@ -12,6 +12,10 @@ Neowtwork uses semantic versioning.
 - First-pass card choice/preview stats overlay for rewards, card-selection screens, shop cards, and event-like card previews.
   - Combat hand, deck, draw pile, discard pile, exhaust pile, and other already-owned card views are intentionally excluded.
 
+### Changed
+
+- Aligned the in-run choice card stats overlay size and placement more closely with the Card Library overlay.
+
 ## 0.2.0 - 2026-06-23
 
 ### Added

@@ -102,9 +102,10 @@ internal static class ChoiceCardStatsOverlay
 {
     private const string OverlayName = "NeowtworkChoiceCardStatsOverlay";
     private const float OverlayWidth = 270f;
-    private const float OverlayHeight = 154f;
+    private const float OverlayHeight = 172f;
     private const float OverlayX = 15f;
-    private const float OverlayY = 92f;
+    private const float OverlayY = 56f;
+    private const float LabelTopPadding = 8f;
 
     private static readonly HashSet<NCard> HoveredCards = [];
 
@@ -185,13 +186,13 @@ internal static class ChoiceCardStatsOverlay
         Label label = new()
         {
             Name = "Label",
-            Position = new Vector2(4f, 6f),
-            Size = new Vector2(OverlayWidth - 8f, OverlayHeight - 12f),
+            Position = new Vector2(4f, 0f),
+            Size = new Vector2(OverlayWidth - 8f, OverlayHeight - LabelTopPadding),
             HorizontalAlignment = HorizontalAlignment.Center,
             VerticalAlignment = VerticalAlignment.Center,
             MouseFilter = Control.MouseFilterEnum.Ignore
         };
-        label.AddThemeFontSizeOverride("font_size", 18);
+        label.AddThemeFontSizeOverride("font_size", 22);
         label.AddThemeColorOverride("font_color", new Color(0.98f, 0.94f, 0.84f));
         label.AddThemeColorOverride("font_outline_color", Colors.Black);
         label.AddThemeConstantOverride("outline_size", 3);
