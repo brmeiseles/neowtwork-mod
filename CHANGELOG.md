@@ -6,6 +6,22 @@ Neowtwork uses semantic versioning.
 
 ## Unreleased
 
+## 0.2.0 - 2026-06-23
+
+### Added
+
+- Manual `Import Base Game Progress` tool in Mod Configuration.
+  - Re-checks vanilla and modded save status on demand.
+  - Allows intentional vanilla-to-modded import even when the modded profile already has data.
+  - Creates a timestamped backup before replacing modded progress.
+  - Shows save status and refresh controls in Neowtwork's config page.
+- Clearer Steam Cloud guidance in import confirmation and success dialogs.
+
+### Changed
+
+- The first-run import prompt remains conservative, while the manual config import path is now the reliable recovery option.
+- Friend-test instructions now recommend using the in-game import tool instead of manually copying save files.
+
 ## 0.1.1 - 2026-06-23
 
 ### Added

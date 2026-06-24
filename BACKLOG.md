@@ -107,11 +107,15 @@ Keep the spirit of the game alive: small, readable, native-feeling improvements 
 
 ## Save and progress sync
 
-- Test and polish the first-run vanilla-to-modded progress import flow.
+- Test and polish the Mod Configuration vanilla-to-modded progress import flow.
   - Must ask before copying anything.
   - Must explain what will happen.
   - Must create timestamped backups first.
   - Must never silently overwrite user progress.
+- Verify the manual import path with friends on Windows.
+  - It should avoid manual AppData copying.
+  - It should work even when the automatic first-run prompt does not appear.
+  - It should explain Steam Cloud limits clearly.
 - Current first pass detects likely sync states:
   - vanilla has progress, modded is empty
   - both have progress

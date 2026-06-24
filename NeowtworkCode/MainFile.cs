@@ -1,4 +1,5 @@
 using Godot;
+using BaseLib.Config;
 using HarmonyLib;
 using MegaCrit.Sts2.Core.Modding;
 
@@ -21,6 +22,7 @@ public partial class MainFile : Node
 
         harmony.PatchAll();
 
+        ModConfigRegistry.Register(ModId, new NeowtworkConfig());
         VanillaProgressImportAssistant.TryOfferImport(Logger);
         RunHistoryScanner.ScanAndLog(Logger);
     }

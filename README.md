@@ -19,6 +19,7 @@ The current prototype improves the card compendium by showing compact card analy
   - Seen
 - Selecting the same stat sort twice reverses the exact sort order.
 - Offers a first-run import prompt when vanilla progress exists but the matching modded profile appears empty or behind.
+- Adds a manual `Import Base Game Progress` tool in Mod Configuration for copying vanilla progress into modded after creating a backup.
 - Includes a read-only run-history scanner that currently logs summary information.
 
 ## Friend testing
@@ -46,7 +47,7 @@ This has been tested locally on macOS / Apple Silicon using the public Slay the 
 
 Slay the Spire 2 separates vanilla and modded profile progress. During local development, Steam Cloud can overwrite local modded save changes.
 
-Neowtwork can offer to import local vanilla progress into the matching local modded profile. It creates a backup first and does not copy modded data back into vanilla.
+Neowtwork can import local vanilla progress into the matching local modded profile. Use `Mod Configuration` → `Neowtwork` → `Import Base Game Progress`. It creates a backup first and does not copy modded data back into vanilla.
 
 Neowtwork does not control Steam Cloud or resolve Steam Cloud conflicts automatically.
 

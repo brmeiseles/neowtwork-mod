@@ -100,11 +100,17 @@ mods/
 
 1. Launch Slay the Spire 2.
 2. Confirm the game says it is running modded.
-3. If Neowtwork asks `Import base-game data?`, take a screenshot, then choose whether to import your vanilla progress into the modded profile.
-4. Open the compendium/card library.
-5. Enable `View Stats`.
-6. Check a few cards.
-7. Try the `Card Stats` sorting dropdown.
+3. Open `Mod Configuration`.
+4. Select `Neowtwork`.
+5. Click `Import Base Game Progress`.
+6. Confirm the import if you want your vanilla/base-game progress copied into the modded profile.
+7. If the compendium does not update right away, fully quit and relaunch Slay the Spire 2, then check again.
+8. Open the compendium/card library.
+9. Enable `View Stats`.
+10. Check a few cards.
+11. Try the `Card Stats` sorting dropdown.
+
+Neowtwork may also ask `Import base-game data?` automatically on launch. That prompt is optional; the Mod Configuration button is the reliable manual path.
 
 If you choose `Import` and the compendium does not update right away, fully quit and relaunch Slay the Spire 2, then check again.
 
@@ -116,6 +122,8 @@ Please send:
 - Did BaseLib load?
 - Did Neowtwork load?
 - Did Neowtwork ask to import base-game data?
+- Did `Mod Configuration` show a `Neowtwork` page?
+- Did `Import Base Game Progress` appear?
 - If you chose Import, did it show `Import complete`?
 - If you chose Import, did your compendium/progress appear afterward, either immediately or after relaunch?
 - Did the compendium open?
@@ -130,15 +138,15 @@ Slay the Spire 2 separates vanilla and modded profile progress.
 
 If your modded profile looks empty or the compendium is locked, your vanilla progress is probably still safe; the game is just using a separate modded save lane.
 
-Neowtwork may offer to import base-game data. This copies your vanilla profile into the matching modded profile after creating a backup.
+Neowtwork can import base-game data from `Mod Configuration` → `Neowtwork` → `Import Base Game Progress`. This copies your vanilla profile into the matching modded profile after creating a backup.
 
-- You may not see the import prompt if your modded profile already has progress, or if your vanilla profile does not appear to have meaningful progress yet. That is okay.
+- You may not see the automatic import prompt if your modded profile already has progress, or if your vanilla profile does not appear to have meaningful progress yet. That is okay; use the manual Mod Configuration button instead.
 - Choosing `Import` creates a backup first, then copies vanilla progress and run history into modded.
 - Choosing `Not Now` does not change save files.
 - Neowtwork does not copy modded data back into vanilla.
 - Neowtwork does not control Steam Cloud.
 
-Do not manually copy or edit save files unless Brandon explicitly asks you to.
+Do not manually copy or edit save files unless Brandon explicitly asks you to. Use the in-game import button first.
 
 ## Steam Cloud warning
 

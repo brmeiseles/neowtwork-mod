@@ -34,11 +34,75 @@ internal static class VanillaProgressImportAssistant
         }
     }
 
+    public static string GetImportStatusText()
+    {
+        try
+        {
+            ImportScan scan = ScanImportCandidates();
+            if (scan.SteamUsers.Count == 0)
+            {
+                return "[b]Base-game progress import[/b]\n\n" +
+                       $"No Slay the Spire 2 Steam save folders were found under:\n{scan.SaveRootPath}\n\n" +
+                       "If your progress is missing, launch the unmodded game once and make sure local save data exists.";
+            }
+
+            ImportCandidate? bestManualCandidate = SelectBestCandidate(scan, ImportMode.Manual);
+            string summary = "[b]Base-game progress import[/b]\n\n" +
+                             $"Save root:\n{scan.SaveRootPath}\n\n" +
+                             $"Steam save folders found: {scan.SteamUsers.Count}\n" +
+                             $"Vanilla profiles found: {scan.VanillaProfileCount}\n";
+
+            if (bestManualCandidate == null)
+            {
+                return summary +
+                       "\nNo meaningful vanilla profile was found to import.\n" +
+                       "If this looks wrong, launch the unmodded game once, then return here and refresh.";
+            }
+
+            return summary +
+                   $"\nReady to import: {bestManualCandidate.DisplayName}\n" +
+                   $"Vanilla: {FormatProfileStats(bestManualCandidate.SourceStats)}\n" +
+                   $"Modded: {FormatProfileStats(bestManualCandidate.TargetStats)}\n\n" +
+                   "Use Import Base Game Progress to copy vanilla progress into modded after creating a backup.";
+        }
+        catch (Exception exception)
+        {
+            return "[b]Base-game progress import[/b]\n\n" +
+                   $"Could not read save status.\n\n{exception.Message}";
+        }
+    }
+
+    public static void ShowManualImportDialog(Sts2Logger logger)
+    {
+        try
+        {
+            if (Engine.GetMainLoop() is not SceneTree sceneTree)
+            {
+                logger.Info("Skipping manual vanilla progress import dialog: Godot scene tree is not available.");
+                return;
+            }
+
+            ImportScan scan = ScanImportCandidates(logger);
+            ImportCandidate? candidate = SelectBestCandidate(scan, ImportMode.Manual);
+            if (candidate == null)
+            {
+                ShowNoCandidateDialog(sceneTree, scan);
+                return;
+            }
+
+            ShowImportConfirmationDialog(sceneTree, candidate, logger, ImportMode.Manual);
+        }
+        catch (Exception exception)
+        {
+            logger.Error($"Failed while creating manual vanilla progress import dialog: {exception}");
+        }
+    }
+
     private static void TryCreateDialog(SceneTree sceneTree, Sts2Logger logger)
     {
         try
         {
-            ImportCandidate? candidate = FindBestImportCandidate(logger);
+            ImportCandidate? candidate = FindBestImportCandidate(logger, ImportMode.Auto);
             if (candidate == null)
             {
                 return;
@@ -49,41 +113,7 @@ internal static class VanillaProgressImportAssistant
                 return;
             }
 
-            ConfirmationDialog dialog = new()
-            {
-                Name = DialogName,
-                Title = "Import base-game data?",
-                DialogText =
-                    "Your modded profile appears to be missing base-game progress.\n\n" +
-                    "Neowtwork can copy your vanilla progress and run history into the modded profile so the compendium and card stats match your base game.\n\n" +
-                    "A backup will be created first.",
-                OkButtonText = "Import",
-                CancelButtonText = "Not Now",
-                DialogAutowrap = true,
-                DialogCloseOnEscape = true,
-                MinSize = new Vector2I(720, 340)
-            };
-
-            dialog.Confirmed += () =>
-            {
-                ImportResult result = ImportVanillaProfile(candidate, logger);
-                ShowResultDialog(sceneTree, result);
-                dialog.QueueFree();
-            };
-
-            dialog.Canceled += () =>
-            {
-                DismissedThisSession.Add(candidate.MarkerKey);
-                logger.Info($"Vanilla progress import skipped for {candidate.DisplayName}.");
-                dialog.QueueFree();
-            };
-
-            sceneTree.Root.AddChild(dialog);
-            dialog.PopupCentered(new Vector2I(760, 360));
-
-            logger.Info(
-                $"Offering vanilla progress import for {candidate.DisplayName}: " +
-                $"vanilla files={candidate.SourceStats.FileCount}, modded files={candidate.TargetStats.FileCount}.");
+            ShowImportConfirmationDialog(sceneTree, candidate, logger, ImportMode.Auto);
         }
         catch (Exception exception)
         {
@@ -91,15 +121,26 @@ internal static class VanillaProgressImportAssistant
         }
     }
 
-    private static ImportCandidate? FindBestImportCandidate(Sts2Logger logger)
+    private static ImportCandidate? FindBestImportCandidate(Sts2Logger logger, ImportMode mode)
     {
+        return SelectBestCandidate(ScanImportCandidates(logger), mode);
+    }
+
+    private static ImportScan ScanImportCandidates(Sts2Logger? logger = null)
+    {
+        string saveRootPath = GetSaveRootPath();
+        List<DirectoryInfo> steamUsers = [];
+        List<ImportCandidate> candidates = [];
+        int vanillaProfileCount = 0;
+
         foreach (DirectoryInfo steamUserDirectory in FindSteamUserDirectories())
         {
+            steamUsers.Add(steamUserDirectory);
             DirectoryInfo moddedDirectory = new(Path.Combine(steamUserDirectory.FullName, "modded"));
-            List<ImportCandidate> candidates = [];
 
             foreach (DirectoryInfo vanillaProfile in FindVanillaProfiles(steamUserDirectory))
             {
+                vanillaProfileCount++;
                 string profileName = vanillaProfile.Name;
                 DirectoryInfo moddedProfile = new(Path.Combine(moddedDirectory.FullName, profileName));
                 ProfileStats sourceStats = ProfileStats.FromDirectory(vanillaProfile);
@@ -107,16 +148,6 @@ internal static class VanillaProgressImportAssistant
                 string markerKey = $"{steamUserDirectory.Name}/{profileName}";
 
                 if (!sourceStats.HasMeaningfulData)
-                {
-                    continue;
-                }
-
-                if (DismissedThisSession.Contains(markerKey) || HasImportMarker(steamUserDirectory, markerKey))
-                {
-                    continue;
-                }
-
-                if (!ShouldOfferImport(sourceStats, targetStats))
                 {
                     continue;
                 }
@@ -130,20 +161,38 @@ internal static class VanillaProgressImportAssistant
                     MarkerKey: markerKey,
                     DisplayName: $"{profileName} ({steamUserDirectory.Name})"));
             }
-
-            ImportCandidate? bestCandidate = candidates
-                .OrderByDescending(candidate => candidate.SourceStats.HistoryFileCount)
-                .ThenByDescending(candidate => candidate.SourceStats.TotalBytes)
-                .FirstOrDefault();
-
-            if (bestCandidate != null)
-            {
-                return bestCandidate;
-            }
         }
 
-        logger.Info("No vanilla progress import candidate found.");
-        return null;
+        logger?.Info(
+            $"Scanned vanilla progress import candidates: saveRoot={saveRootPath}, " +
+            $"steamUsers={steamUsers.Count}, vanillaProfiles={vanillaProfileCount}, meaningfulCandidates={candidates.Count}.");
+
+        return new ImportScan(saveRootPath, steamUsers, candidates, vanillaProfileCount);
+    }
+
+    private static ImportCandidate? SelectBestCandidate(ImportScan scan, ImportMode mode)
+    {
+        IEnumerable<ImportCandidate> candidates = scan.Candidates;
+
+        if (mode == ImportMode.Auto)
+        {
+            candidates = candidates.Where(candidate =>
+                !DismissedThisSession.Contains(candidate.MarkerKey) &&
+                !HasImportMarker(candidate.SteamUserDirectory, candidate.MarkerKey) &&
+                ShouldOfferImport(candidate.SourceStats, candidate.TargetStats));
+        }
+
+        ImportCandidate? bestCandidate = candidates
+            .OrderByDescending(candidate => candidate.SourceStats.HistoryFileCount)
+            .ThenByDescending(candidate => candidate.SourceStats.TotalBytes)
+            .FirstOrDefault();
+
+        if (bestCandidate == null && mode == ImportMode.Auto)
+        {
+            MainFile.Logger.Info("No vanilla progress import candidate found.");
+        }
+
+        return bestCandidate;
     }
 
     private static bool ShouldOfferImport(ProfileStats sourceStats, ProfileStats targetStats)
@@ -206,6 +255,99 @@ internal static class VanillaProgressImportAssistant
         }
     }
 
+    private static void ShowImportConfirmationDialog(
+        SceneTree sceneTree,
+        ImportCandidate candidate,
+        Sts2Logger logger,
+        ImportMode mode)
+    {
+        ConfirmationDialog dialog = new()
+        {
+            Name = DialogName,
+            Title = "Import base-game data?",
+            DialogText = BuildConfirmationText(candidate, mode),
+            OkButtonText = "Import",
+            CancelButtonText = mode == ImportMode.Auto ? "Not Now" : "Cancel",
+            DialogAutowrap = true,
+            DialogCloseOnEscape = true,
+            MinSize = new Vector2I(820, 520)
+        };
+
+        dialog.Confirmed += () =>
+        {
+            ImportResult result = ImportVanillaProfile(candidate, logger);
+            ShowResultDialog(sceneTree, result);
+            dialog.QueueFree();
+        };
+
+        dialog.Canceled += () =>
+        {
+            if (mode == ImportMode.Auto)
+            {
+                DismissedThisSession.Add(candidate.MarkerKey);
+            }
+
+            logger.Info($"Vanilla progress import skipped for {candidate.DisplayName}.");
+            dialog.QueueFree();
+        };
+
+        sceneTree.Root.AddChild(dialog);
+        dialog.PopupCentered(new Vector2I(860, 540));
+
+        logger.Info(
+            $"Offering {mode.ToString().ToLowerInvariant()} vanilla progress import for {candidate.DisplayName}: " +
+            $"vanilla={FormatProfileStats(candidate.SourceStats)}, modded={FormatProfileStats(candidate.TargetStats)}.");
+    }
+
+    private static string BuildConfirmationText(ImportCandidate candidate, ImportMode mode)
+    {
+        string firstLine = mode == ImportMode.Auto
+            ? "Your modded profile appears to be missing base-game progress."
+            : "Neowtwork can copy your base-game progress into your modded profile.";
+
+        string replacementWarning = candidate.TargetStats.HasMeaningfulData
+            ? "\n\nYour current modded profile already has data. Neowtwork will back it up first, then replace it with the base-game profile."
+            : string.Empty;
+
+        return
+            $"{firstLine}\n\n" +
+            $"Profile: {candidate.DisplayName}\n" +
+            $"Vanilla: {FormatProfileStats(candidate.SourceStats)}\n" +
+            $"Modded: {FormatProfileStats(candidate.TargetStats)}" +
+            replacementWarning +
+            "\n\nNeowtwork will:\n" +
+            "- copy vanilla/base-game progress and run history into the matching modded profile\n" +
+            "- create a timestamped backup of the current modded profile first\n" +
+            "- never modify vanilla/base-game saves\n" +
+            "- never control Steam Cloud directly\n\n" +
+            "If Steam later shows a Cloud Conflict after this intentional import, choose the local save if you want to keep the imported modded progress.";
+    }
+
+    private static void ShowNoCandidateDialog(SceneTree sceneTree, ImportScan scan)
+    {
+        AcceptDialog dialog = new()
+        {
+            Name = "NeowtworkVanillaProgressImportNoCandidateDialog",
+            Title = "No base-game data found",
+            DialogText =
+                "Neowtwork could not find a meaningful vanilla/base-game profile to import.\n\n" +
+                $"Save root checked:\n{scan.SaveRootPath}\n\n" +
+                $"Steam save folders found: {scan.SteamUsers.Count}\n" +
+                $"Vanilla profiles found: {scan.VanillaProfileCount}\n\n" +
+                "Try launching the unmodded game once, then return here and refresh.",
+            OkButtonText = "OK",
+            DialogAutowrap = true,
+            DialogCloseOnEscape = true,
+            MinSize = new Vector2I(720, 360)
+        };
+
+        dialog.Confirmed += dialog.QueueFree;
+        dialog.Canceled += dialog.QueueFree;
+
+        sceneTree.Root.AddChild(dialog);
+        dialog.PopupCentered(new Vector2I(760, 380));
+    }
+
     private static void ShowResultDialog(SceneTree sceneTree, ImportResult result)
     {
         AcceptDialog dialog = new()
@@ -213,7 +355,7 @@ internal static class VanillaProgressImportAssistant
             Name = "NeowtworkVanillaProgressImportResultDialog",
             Title = result.WasSuccessful ? "Import complete" : "Import failed",
             DialogText = result.WasSuccessful
-                ? "Base-game progress was copied into your modded profile.\n\nRestart Slay the Spire 2 if the compendium does not update immediately."
+                ? "Base-game progress was copied into your modded profile.\n\nRestart Slay the Spire 2 if the compendium does not update immediately.\n\nIf Steam shows a Cloud Conflict after this import, choose the local save if you want to keep the imported modded progress."
                 : $"Neowtwork could not import base-game progress.\n\nNo import was completed.\n\n{result.Message}",
             OkButtonText = "OK",
             DialogAutowrap = true,
@@ -311,6 +453,28 @@ internal static class VanillaProgressImportAssistant
     {
         return new FileInfo(Path.Combine(steamUserDirectory.FullName, "modded", "_neowtwork", MarkerFileName));
     }
+
+    private static string FormatProfileStats(ProfileStats stats)
+    {
+        if (!stats.Exists)
+        {
+            return "not found";
+        }
+
+        return $"{stats.FileCount} files, {stats.HistoryFileCount} history runs, {stats.TotalBytes / 1024} KB";
+    }
+
+    private enum ImportMode
+    {
+        Auto,
+        Manual
+    }
+
+    private sealed record ImportScan(
+        string SaveRootPath,
+        List<DirectoryInfo> SteamUsers,
+        List<ImportCandidate> Candidates,
+        int VanillaProfileCount);
 
     private static void CopyDirectory(string sourceDirectory, string targetDirectory)
     {
