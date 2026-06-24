@@ -5,6 +5,7 @@ bin/
 .idea/
 .vs/
 publish/
+dist/
 Properties/
 packages/
 .editorconfig
