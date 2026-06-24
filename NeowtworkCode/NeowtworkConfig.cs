@@ -1,17 +1,32 @@
 using BaseLib.Config;
+using BaseLib.Config.UI;
 using Godot;
 using MegaCrit.Sts2.addons.mega_text;
+using System.Reflection;
 
 namespace Neowtwork.NeowtworkCode;
 
 internal sealed class NeowtworkConfig : SimpleModConfig
 {
+    public enum ChoiceCardStatsDisplayMode
+    {
+        Off,
+        Show,
+        Hover
+    }
+
+    public static ChoiceCardStatsDisplayMode CardStatsDuringChoices { get; set; } = ChoiceCardStatsDisplayMode.Off;
+
     // BaseLib only lists config pages that have at least one visible property.
     // The UI is built manually below, so this exists only to make the Neowtwork page discoverable.
+    [ConfigHideInUI]
     public static bool ImportTools { get; set; } = true;
 
     public override void SetupConfigUI(Control optionContainer)
     {
+        optionContainer.AddChild(CreateSectionHeader("Card Stats", alignToTop: false));
+        optionContainer.AddChild(CreateChoiceStatsModeRow());
+
         optionContainer.AddChild(CreateSectionHeader("Progress Import", alignToTop: false));
 
         MegaRichTextLabel statusLabel = CreateRawLabelControl(
@@ -36,5 +51,14 @@ internal sealed class NeowtworkConfig : SimpleModConfig
             }));
 
         SetupFocusNeighbors(optionContainer);
+    }
+
+    private NConfigOptionRow CreateChoiceStatsModeRow()
+    {
+        PropertyInfo property = typeof(NeowtworkConfig).GetProperty(nameof(CardStatsDuringChoices))!;
+        Control dropdown = CreateRawDropdownControl(property);
+        MegaRichTextLabel label = CreateRawLabelControl("Card Stats During Choices", 28);
+
+        return new NConfigOptionRow(ModPrefix, nameof(CardStatsDuringChoices), label, dropdown);
     }
 }

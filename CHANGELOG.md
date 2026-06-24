@@ -6,6 +6,12 @@ Neowtwork uses semantic versioning.
 
 ## Unreleased
 
+### Added
+
+- `Card Stats During Choices` Mod Configuration setting with `Off`, `Show`, and `Hover` modes.
+- First-pass card choice/preview stats overlay for rewards, card-selection screens, shop cards, and event-like card previews.
+  - Combat hand, deck, draw pile, discard pile, exhaust pile, and other already-owned card views are intentionally excluded.
+
 ## 0.2.0 - 2026-06-23
 
 ### Added
