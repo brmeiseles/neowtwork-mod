@@ -81,6 +81,23 @@ Keep the spirit of the game alive: small, readable, native-feeling improvements 
 
 ## Data and analytics
 
+- Review the first-pass Run Analytics dashboard in Neowtwork Mod Configuration.
+  - Decide which sections deserve to stay, move, collapse, or become their own view.
+  - Decide whether to promote the dashboard into a true native Compendium page.
+  - Treat the current dashboard as a data dump/proving ground, not final UX.
+- Improve event-option analytics beyond chosen-count/win-rate.
+  - Current run history records choices that were selected, not every option that was offered.
+  - To show true event pick rate, start tracking offered event options prospectively.
+  - Keep that tracking read-only with respect to gameplay and save-safe with respect to profiles.
+- Review relic hover stats in-game.
+  - Current implementation attaches stats to relic hover tips broadly, not only the relic collection page.
+  - Decide whether broad relic hover stats feel helpful or too noisy.
+- Add native-feeling filtering to run-history analytics.
+  - Character
+  - Ascension
+  - Singleplayer vs multiplayer
+  - Date/game version
+  - Win/loss
 - Keep using built-in card stats where possible:
   - `TimesWon`
   - `TimesLost`

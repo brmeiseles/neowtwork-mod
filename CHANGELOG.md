@@ -11,10 +11,17 @@ Neowtwork uses semantic versioning.
 - `Card Stats During Choices` Mod Configuration setting with `Off`, `Show`, and `Hover` modes.
 - First-pass card choice/preview stats overlay for rewards, card-selection screens, shop cards, and event-like card previews.
   - Combat hand, deck, draw pile, discard pile, exhaust pile, and other already-owned card views are intentionally excluded.
+- First-pass read-only run-history analytics index.
+  - Deduplicates matching vanilla/modded run files.
+  - Indexes final-deck cards, card choices, relics, event choices, monsters present in death encounters, pathing, shops, and card/relic combos.
+- Run Analytics dashboard in Neowtwork Mod Configuration.
+- Event-option hover stats showing historical choice count and win rate after choosing.
+- Relic hover stats showing historical final-deck count and win rate with that relic.
 
 ### Changed
 
 - Aligned the in-run choice card stats overlay size and placement more closely with the Card Library overlay.
+- Run-history analytics now searches the wider Slay the Spire 2 save root when available instead of only the active modded profile folder.
 
 ## 0.2.0 - 2026-06-23
 

@@ -27,6 +27,25 @@ internal sealed class NeowtworkConfig : SimpleModConfig
         optionContainer.AddChild(CreateSectionHeader("Card Stats", alignToTop: false));
         optionContainer.AddChild(CreateChoiceStatsModeRow());
 
+        optionContainer.AddChild(CreateSectionHeader("Run Analytics", alignToTop: false));
+
+        MegaRichTextLabel analyticsLabel = CreateRawLabelControl(
+            RunHistoryAnalytics.BuildDashboardText(),
+            20);
+        analyticsLabel.FitContent = true;
+        analyticsLabel.AutowrapMode = TextServer.AutowrapMode.WordSmart;
+        analyticsLabel.CustomMinimumSize = new Vector2(0f, 960f);
+        optionContainer.AddChild(analyticsLabel);
+
+        optionContainer.AddChild(CreateButton(
+            "Run Analytics",
+            "Refresh Analytics",
+            () =>
+            {
+                RunHistoryAnalytics.Refresh();
+                analyticsLabel.Text = RunHistoryAnalytics.BuildDashboardText();
+            }));
+
         optionContainer.AddChild(CreateSectionHeader("Progress Import", alignToTop: false));
 
         MegaRichTextLabel statusLabel = CreateRawLabelControl(

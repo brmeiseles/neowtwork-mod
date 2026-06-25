@@ -398,7 +398,7 @@ internal static class VanillaProgressImportAssistant
             .OrderBy(directory => directory.Name, StringComparer.OrdinalIgnoreCase);
     }
 
-    private static string GetSaveRootPath()
+    internal static string GetSaveRootPath()
     {
         if (OperatingSystem.IsMacOS())
         {
