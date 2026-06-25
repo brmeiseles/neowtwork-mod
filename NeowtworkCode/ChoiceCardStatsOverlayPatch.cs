@@ -101,9 +101,9 @@ internal static class ChoiceCardStatsMerchantSlotUnfocusPatch
 internal static class ChoiceCardStatsOverlay
 {
     private const string OverlayName = "NeowtworkChoiceCardStatsOverlay";
-    private const float OverlayWidth = 240f;
+    private const float OverlayWidth = 270f;
     private const float OverlayHeight = 172f;
-    private const float OverlayX = 30f;
+    private const float OverlayX = -135f;
     private const float OverlayY = -158f;
     private const float LabelTopPadding = 8f;
 
