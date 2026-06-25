@@ -49,18 +49,19 @@ Keep the spirit of the game alive: small, readable, native-feeling improvements 
 
 ## In-run quality of life
 
-- Show card stats while making card choices.
-  - Add a persistent `Show card stats` checkbox below the `Skip` button on card reward screens.
-  - Default to off for a clean vanilla-like first impression.
-  - Remember the player's choice between sessions.
-  - When enabled, show the same compact Win Rate / Pick Rate overlay used in the Card Library.
-  - Prioritize card reward screens first, then extend to shop card choices if the UI hook is safe.
-  - Avoid changing combat card views until explicitly designed.
-- Add future card stat display modes for choice screens.
+- Continue polishing card stats while making card choices.
   - `Off`: never show stats.
-  - `On`: always show stats.
+  - `Show`: always show stats.
   - `Hover`: show stats only while hovering a card, so players can still enjoy the card art.
-  - Start with the simpler checkbox version before introducing a three-state control.
+  - Current primary supported surfaces: card rewards and shop card choices.
+  - Avoid combat hand, deck, draw pile, discard pile, exhaust pile, and other already-owned card views.
+- Add card stats to event-room card previews.
+  - Example: `Bugslayer` shows an event preview card beside event options.
+  - These appear to use the game’s `CardPreviewStyle.EventLayout` / `EventCardPreviewContainer` path rather than the reward/shop layouts.
+  - Reuse the same underlying card stats and `Off` / `Show` / `Hover` setting.
+  - Treat event previews as their own layout case; do not assume reward/shop overlay coordinates will fit.
+  - Start with a diagnostic placement pass before polishing.
+  - Do not push until an in-game screenshot confirms placement, because this surface has a different scale, parent container, and nearby event option buttons.
 - Add shop analytics.
   - Track what the player usually spends gold on:
     - cards
