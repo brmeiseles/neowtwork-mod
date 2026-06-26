@@ -17,6 +17,8 @@ internal sealed class NeowtworkConfig : SimpleModConfig
 
     public static ChoiceCardStatsDisplayMode CardStatsDuringChoices { get; set; } = ChoiceCardStatsDisplayMode.Off;
 
+    public static bool KeepBaseGameAndModdedProgressInSync { get; set; } = false;
+
     // BaseLib only lists config pages that have at least one visible property.
     // The UI is built manually below, so this exists only to make the Neowtwork page discoverable.
     [ConfigHideInUI]
@@ -28,6 +30,8 @@ internal sealed class NeowtworkConfig : SimpleModConfig
         optionContainer.AddChild(CreateChoiceStatsModeRow());
 
         optionContainer.AddChild(CreateSectionHeader("Progress Import", alignToTop: false));
+
+        optionContainer.AddChild(CreateProgressSyncRow());
 
         MegaRichTextLabel statusLabel = CreateRawLabelControl(
             VanillaProgressImportAssistant.GetImportStatusText(),
@@ -48,6 +52,27 @@ internal sealed class NeowtworkConfig : SimpleModConfig
             () =>
             {
                 statusLabel.Text = VanillaProgressImportAssistant.GetImportStatusText();
+            }));
+
+        MegaRichTextLabel syncStatusLabel = CreateRawLabelControl(
+            VanillaProgressImportAssistant.GetSyncStatusText(),
+            22);
+        syncStatusLabel.FitContent = true;
+        syncStatusLabel.AutowrapMode = TextServer.AutowrapMode.WordSmart;
+        syncStatusLabel.CustomMinimumSize = new Vector2(0f, 220f);
+        optionContainer.AddChild(syncStatusLabel);
+
+        optionContainer.AddChild(CreateButton(
+            "Progress Sync",
+            "Sync Progress Now",
+            () => VanillaProgressImportAssistant.ShowManualSyncDialog(MainFile.Logger)));
+
+        optionContainer.AddChild(CreateButton(
+            "Sync Status",
+            "Refresh Sync Status",
+            () =>
+            {
+                syncStatusLabel.Text = VanillaProgressImportAssistant.GetSyncStatusText();
             }));
 
         optionContainer.AddChild(CreateSectionHeader("Run Analytics Dump", alignToTop: false));
@@ -79,5 +104,14 @@ internal sealed class NeowtworkConfig : SimpleModConfig
         MegaRichTextLabel label = CreateRawLabelControl("Card Stats During Choices", 28);
 
         return new NConfigOptionRow(ModPrefix, nameof(CardStatsDuringChoices), label, dropdown);
+    }
+
+    private NConfigOptionRow CreateProgressSyncRow()
+    {
+        PropertyInfo property = typeof(NeowtworkConfig).GetProperty(nameof(KeepBaseGameAndModdedProgressInSync))!;
+        Control tickbox = CreateRawTickboxControl(property);
+        MegaRichTextLabel label = CreateRawLabelControl("Keep Base Game + Modded Progress in Sync", 24);
+
+        return new NConfigOptionRow(ModPrefix, nameof(KeepBaseGameAndModdedProgressInSync), label, tickbox);
     }
 }

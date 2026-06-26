@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
+using System.Security.Cryptography;
 using Godot;
 using Sts2Logger = MegaCrit.Sts2.Core.Logging.Logger;
 
@@ -98,6 +99,96 @@ internal static class VanillaProgressImportAssistant
         }
     }
 
+    public static void TryAutoSync(Sts2Logger logger)
+    {
+        if (!NeowtworkConfig.KeepBaseGameAndModdedProgressInSync)
+        {
+            return;
+        }
+
+        try
+        {
+            SyncResult result = SyncAllProfiles(logger);
+            logger.Info($"Auto progress sync complete: {result.SummaryForLog()}");
+        }
+        catch (Exception exception)
+        {
+            logger.Error($"Auto progress sync failed: {exception}");
+        }
+    }
+
+    public static string GetSyncStatusText()
+    {
+        try
+        {
+            SyncPlan plan = BuildSyncPlan();
+            if (plan.Pairs.Count == 0)
+            {
+                return "[b]Progress sync[/b]\n\nNo vanilla/modded profile pairs were found.";
+            }
+
+            return "[b]Progress sync[/b]\n\n" +
+                   $"Setting: {(NeowtworkConfig.KeepBaseGameAndModdedProgressInSync ? "enabled" : "off")}\n" +
+                   $"Profile pairs found: {plan.Pairs.Count}\n" +
+                   $"Files to copy vanilla → modded: {plan.TotalVanillaToModded}\n" +
+                   $"Files to copy modded → vanilla: {plan.TotalModdedToVanilla}\n" +
+                   $"Conflicts needing review: {plan.TotalConflicts}\n\n" +
+                   "Sync preserves unique files from both sides and creates backups before writing.\n" +
+                   "Steam Cloud is not controlled by Neowtwork; if Steam shows a Cloud Conflict, review it carefully.";
+        }
+        catch (Exception exception)
+        {
+            return "[b]Progress sync[/b]\n\n" +
+                   $"Could not read sync status.\n\n{exception.Message}";
+        }
+    }
+
+    public static void ShowManualSyncDialog(Sts2Logger logger)
+    {
+        try
+        {
+            if (Engine.GetMainLoop() is not SceneTree sceneTree)
+            {
+                logger.Info("Skipping manual progress sync dialog: Godot scene tree is not available.");
+                return;
+            }
+
+            SyncPlan plan = BuildSyncPlan();
+            if (plan.Pairs.Count == 0)
+            {
+                ShowNoSyncCandidateDialog(sceneTree);
+                return;
+            }
+
+            ConfirmationDialog dialog = new()
+            {
+                Name = "NeowtworkProgressSyncDialog",
+                Title = "Sync base-game and modded progress?",
+                DialogText = BuildSyncConfirmationText(plan),
+                OkButtonText = "Sync",
+                CancelButtonText = "Cancel",
+                DialogAutowrap = true,
+                DialogCloseOnEscape = true,
+                MinSize = new Vector2I(860, 560)
+            };
+
+            dialog.Confirmed += () =>
+            {
+                SyncResult result = SyncAllProfiles(logger);
+                ShowSyncResultDialog(sceneTree, result);
+                dialog.QueueFree();
+            };
+
+            dialog.Canceled += dialog.QueueFree;
+            sceneTree.Root.AddChild(dialog);
+            dialog.PopupCentered(new Vector2I(900, 580));
+        }
+        catch (Exception exception)
+        {
+            logger.Error($"Failed while creating progress sync dialog: {exception}");
+        }
+    }
+
     private static void TryCreateDialog(SceneTree sceneTree, Sts2Logger logger)
     {
         try
@@ -168,6 +259,147 @@ internal static class VanillaProgressImportAssistant
             $"steamUsers={steamUsers.Count}, vanillaProfiles={vanillaProfileCount}, meaningfulCandidates={candidates.Count}.");
 
         return new ImportScan(saveRootPath, steamUsers, candidates, vanillaProfileCount);
+    }
+
+    private static SyncPlan BuildSyncPlan()
+    {
+        List<SyncProfilePair> pairs = [];
+
+        foreach (DirectoryInfo steamUserDirectory in FindSteamUserDirectories())
+        {
+            DirectoryInfo moddedDirectory = new(Path.Combine(steamUserDirectory.FullName, "modded"));
+            Dictionary<string, DirectoryInfo> profiles = new(StringComparer.OrdinalIgnoreCase);
+
+            foreach (DirectoryInfo vanillaProfile in FindVanillaProfiles(steamUserDirectory))
+            {
+                profiles[vanillaProfile.Name] = vanillaProfile;
+            }
+
+            if (moddedDirectory.Exists)
+            {
+                foreach (DirectoryInfo moddedProfile in FindModdedProfiles(moddedDirectory))
+                {
+                    profiles.TryAdd(moddedProfile.Name, new DirectoryInfo(Path.Combine(steamUserDirectory.FullName, moddedProfile.Name)));
+                }
+            }
+
+            foreach ((string profileName, DirectoryInfo vanillaProfile) in profiles.OrderBy(pair => pair.Key, StringComparer.OrdinalIgnoreCase))
+            {
+                DirectoryInfo moddedProfile = new(Path.Combine(moddedDirectory.FullName, profileName));
+                SyncProfilePair pair = AnalyzeSyncPair(steamUserDirectory, vanillaProfile, moddedProfile);
+                if (pair.HasAnyData)
+                {
+                    pairs.Add(pair);
+                }
+            }
+        }
+
+        return new SyncPlan(pairs);
+    }
+
+    private static SyncProfilePair AnalyzeSyncPair(
+        DirectoryInfo steamUserDirectory,
+        DirectoryInfo vanillaProfile,
+        DirectoryInfo moddedProfile)
+    {
+        Dictionary<string, FileSnapshot> vanillaFiles = SnapshotFiles(vanillaProfile);
+        Dictionary<string, FileSnapshot> moddedFiles = SnapshotFiles(moddedProfile);
+        List<SyncFileAction> actions = [];
+        List<string> conflicts = [];
+
+        foreach (string relativePath in vanillaFiles.Keys.Union(moddedFiles.Keys, StringComparer.Ordinal).OrderBy(path => path, StringComparer.Ordinal))
+        {
+            bool hasVanilla = vanillaFiles.TryGetValue(relativePath, out FileSnapshot? vanillaFile);
+            bool hasModded = moddedFiles.TryGetValue(relativePath, out FileSnapshot? moddedFile);
+
+            if (hasVanilla && !hasModded)
+            {
+                actions.Add(SyncFileAction.CopyVanillaToModded(vanillaFile!));
+                continue;
+            }
+
+            if (!hasVanilla && hasModded)
+            {
+                actions.Add(SyncFileAction.CopyModdedToVanilla(moddedFile!));
+                continue;
+            }
+
+            if (!hasVanilla || !hasModded || vanillaFile is null || moddedFile is null || vanillaFile.IsSameContentAs(moddedFile))
+            {
+                continue;
+            }
+
+            if (vanillaFile.LastWriteUtc > moddedFile.LastWriteUtc)
+            {
+                actions.Add(SyncFileAction.CopyVanillaToModded(vanillaFile));
+            }
+            else if (moddedFile.LastWriteUtc > vanillaFile.LastWriteUtc)
+            {
+                actions.Add(SyncFileAction.CopyModdedToVanilla(moddedFile));
+            }
+            else
+            {
+                conflicts.Add(relativePath);
+            }
+        }
+
+        return new SyncProfilePair(
+            SteamUserDirectory: steamUserDirectory,
+            VanillaProfile: vanillaProfile,
+            ModdedProfile: moddedProfile,
+            VanillaStats: ProfileStats.FromDirectory(vanillaProfile),
+            ModdedStats: ProfileStats.FromDirectory(moddedProfile),
+            Actions: actions,
+            Conflicts: conflicts);
+    }
+
+    private static SyncResult SyncAllProfiles(Sts2Logger logger)
+    {
+        SyncPlan plan = BuildSyncPlan();
+        string timestamp = DateTime.Now.ToString("yyyyMMdd-HHmmss");
+        List<string> backupPaths = [];
+        int copiedVanillaToModded = 0;
+        int copiedModdedToVanilla = 0;
+
+        foreach (SyncProfilePair pair in plan.Pairs)
+        {
+            if (pair.Actions.Count == 0)
+            {
+                continue;
+            }
+
+            DirectoryInfo backupRoot = new(Path.Combine(pair.SteamUserDirectory.FullName, "modded", "_neowtwork_backups", $"sync-{pair.VanillaProfile.Name}-{timestamp}"));
+            if (pair.VanillaProfile.Exists)
+            {
+                CopyDirectory(pair.VanillaProfile.FullName, Path.Combine(backupRoot.FullName, "vanilla"));
+            }
+
+            if (pair.ModdedProfile.Exists)
+            {
+                CopyDirectory(pair.ModdedProfile.FullName, Path.Combine(backupRoot.FullName, "modded"));
+            }
+
+            backupPaths.Add(backupRoot.FullName);
+
+            foreach (SyncFileAction action in pair.Actions)
+            {
+                if (action.Direction == SyncDirection.VanillaToModded)
+                {
+                    CopyFilePreservingTime(action.Source.FullPath, Path.Combine(pair.ModdedProfile.FullName, action.Source.RelativePath));
+                    copiedVanillaToModded++;
+                }
+                else
+                {
+                    CopyFilePreservingTime(action.Source.FullPath, Path.Combine(pair.VanillaProfile.FullName, action.Source.RelativePath));
+                    copiedModdedToVanilla++;
+                }
+            }
+
+            logger.Info(
+                $"Synced {pair.DisplayName}: vanillaToModded={pair.VanillaToModdedCount}, moddedToVanilla={pair.ModdedToVanillaCount}, conflicts={pair.Conflicts.Count}.");
+        }
+
+        return new SyncResult(plan, copiedVanillaToModded, copiedModdedToVanilla, backupPaths);
     }
 
     private static ImportCandidate? SelectBestCandidate(ImportScan scan, ImportMode mode)
@@ -348,6 +580,28 @@ internal static class VanillaProgressImportAssistant
         dialog.PopupCentered(new Vector2I(760, 380));
     }
 
+    private static void ShowNoSyncCandidateDialog(SceneTree sceneTree)
+    {
+        AcceptDialog dialog = new()
+        {
+            Name = "NeowtworkProgressSyncNoCandidateDialog",
+            Title = "No progress profiles found",
+            DialogText =
+                "Neowtwork could not find vanilla or modded profile folders to sync.\n\n" +
+                "Launch Slay the Spire 2 once, then return here and refresh.",
+            OkButtonText = "OK",
+            DialogAutowrap = true,
+            DialogCloseOnEscape = true,
+            MinSize = new Vector2I(680, 260)
+        };
+
+        dialog.Confirmed += dialog.QueueFree;
+        dialog.Canceled += dialog.QueueFree;
+
+        sceneTree.Root.AddChild(dialog);
+        dialog.PopupCentered(new Vector2I(720, 300));
+    }
+
     private static void ShowResultDialog(SceneTree sceneTree, ImportResult result)
     {
         AcceptDialog dialog = new()
@@ -368,6 +622,49 @@ internal static class VanillaProgressImportAssistant
 
         sceneTree.Root.AddChild(dialog);
         dialog.PopupCentered(new Vector2I(680, 280));
+    }
+
+    private static void ShowSyncResultDialog(SceneTree sceneTree, SyncResult result)
+    {
+        AcceptDialog dialog = new()
+        {
+            Name = "NeowtworkProgressSyncResultDialog",
+            Title = result.Plan.TotalConflicts == 0 ? "Progress sync complete" : "Progress sync completed with conflicts",
+            DialogText =
+                $"Copied vanilla → modded: {result.CopiedVanillaToModded}\n" +
+                $"Copied modded → vanilla: {result.CopiedModdedToVanilla}\n" +
+                $"Conflicts skipped: {result.Plan.TotalConflicts}\n\n" +
+                $"Backups created: {result.BackupPaths.Count}\n\n" +
+                "Restart Slay the Spire 2 if the compendium or run history does not update immediately.\n\n" +
+                "If Steam shows a Cloud Conflict, review it carefully. Neowtwork syncs local files only.",
+            OkButtonText = "OK",
+            DialogAutowrap = true,
+            DialogCloseOnEscape = true,
+            MinSize = new Vector2I(720, 360)
+        };
+
+        dialog.Confirmed += dialog.QueueFree;
+        dialog.Canceled += dialog.QueueFree;
+
+        sceneTree.Root.AddChild(dialog);
+        dialog.PopupCentered(new Vector2I(760, 400));
+    }
+
+    private static string BuildSyncConfirmationText(SyncPlan plan)
+    {
+        return
+            "Neowtwork can keep your base-game and modded local progress folders aligned.\n\n" +
+            $"Profile pairs: {plan.Pairs.Count}\n" +
+            $"Vanilla → modded files: {plan.TotalVanillaToModded}\n" +
+            $"Modded → vanilla files: {plan.TotalModdedToVanilla}\n" +
+            $"Conflicts skipped: {plan.TotalConflicts}\n\n" +
+            "Neowtwork will:\n" +
+            "- copy missing/newer files in both directions\n" +
+            "- create timestamped backups before writing\n" +
+            "- preserve unique run-history files from both sides\n" +
+            "- skip same-time conflicting files instead of guessing\n" +
+            "- never control Steam Cloud directly\n\n" +
+            "This is intended for keeping modded and unmodded local progress in lockstep after you opt in.";
     }
 
     private static IEnumerable<DirectoryInfo> FindSteamUserDirectories()
@@ -396,6 +693,23 @@ internal static class VanillaProgressImportAssistant
             .Where(directory => directory.Name.Length > "profile".Length &&
                                 directory.Name["profile".Length..].All(char.IsDigit))
             .OrderBy(directory => directory.Name, StringComparer.OrdinalIgnoreCase);
+    }
+
+    private static IEnumerable<DirectoryInfo> FindModdedProfiles(DirectoryInfo moddedDirectory)
+    {
+        if (!moddedDirectory.Exists)
+        {
+            yield break;
+        }
+
+        foreach (DirectoryInfo directory in moddedDirectory.EnumerateDirectories("profile*"))
+        {
+            if (directory.Name.Length > "profile".Length &&
+                directory.Name["profile".Length..].All(char.IsDigit))
+            {
+                yield return directory;
+            }
+        }
     }
 
     internal static string GetSaveRootPath()
@@ -476,6 +790,87 @@ internal static class VanillaProgressImportAssistant
         List<ImportCandidate> Candidates,
         int VanillaProfileCount);
 
+    private sealed record SyncPlan(List<SyncProfilePair> Pairs)
+    {
+        public int TotalVanillaToModded => Pairs.Sum(pair => pair.VanillaToModdedCount);
+        public int TotalModdedToVanilla => Pairs.Sum(pair => pair.ModdedToVanillaCount);
+        public int TotalConflicts => Pairs.Sum(pair => pair.Conflicts.Count);
+    }
+
+    private sealed record SyncProfilePair(
+        DirectoryInfo SteamUserDirectory,
+        DirectoryInfo VanillaProfile,
+        DirectoryInfo ModdedProfile,
+        ProfileStats VanillaStats,
+        ProfileStats ModdedStats,
+        List<SyncFileAction> Actions,
+        List<string> Conflicts)
+    {
+        public string DisplayName => $"{VanillaProfile.Name} ({SteamUserDirectory.Name})";
+        public bool HasAnyData => VanillaStats.Exists || ModdedStats.Exists;
+        public int VanillaToModdedCount => Actions.Count(action => action.Direction == SyncDirection.VanillaToModded);
+        public int ModdedToVanillaCount => Actions.Count(action => action.Direction == SyncDirection.ModdedToVanilla);
+    }
+
+    private sealed record SyncResult(
+        SyncPlan Plan,
+        int CopiedVanillaToModded,
+        int CopiedModdedToVanilla,
+        List<string> BackupPaths)
+    {
+        public string SummaryForLog()
+        {
+            return $"pairs={Plan.Pairs.Count}, vanillaToModded={CopiedVanillaToModded}, moddedToVanilla={CopiedModdedToVanilla}, conflicts={Plan.TotalConflicts}, backups={BackupPaths.Count}";
+        }
+    }
+
+    private enum SyncDirection
+    {
+        VanillaToModded,
+        ModdedToVanilla
+    }
+
+    private sealed record SyncFileAction(SyncDirection Direction, FileSnapshot Source)
+    {
+        public static SyncFileAction CopyVanillaToModded(FileSnapshot source)
+        {
+            return new SyncFileAction(SyncDirection.VanillaToModded, source);
+        }
+
+        public static SyncFileAction CopyModdedToVanilla(FileSnapshot source)
+        {
+            return new SyncFileAction(SyncDirection.ModdedToVanilla, source);
+        }
+    }
+
+    private sealed record FileSnapshot(
+        string RootPath,
+        string FullPath,
+        string RelativePath,
+        long Length,
+        DateTime LastWriteUtc,
+        string Hash)
+    {
+        public bool IsSameContentAs(FileSnapshot other)
+        {
+            return Length == other.Length && Hash.Equals(other.Hash, StringComparison.Ordinal);
+        }
+
+        public static FileSnapshot FromFile(string rootPath, FileInfo file, string relativePath)
+        {
+            using FileStream stream = file.OpenRead();
+            string hash = Convert.ToHexString(SHA256.HashData(stream));
+
+            return new FileSnapshot(
+                RootPath: rootPath,
+                FullPath: file.FullName,
+                RelativePath: relativePath,
+                Length: file.Length,
+                LastWriteUtc: file.LastWriteTimeUtc,
+                Hash: hash);
+        }
+    }
+
     private static void CopyDirectory(string sourceDirectory, string targetDirectory)
     {
         Directory.CreateDirectory(targetDirectory);
@@ -493,6 +888,46 @@ internal static class VanillaProgressImportAssistant
             Directory.CreateDirectory(Path.GetDirectoryName(targetFile)!);
             File.Copy(file, targetFile, overwrite: true);
         }
+    }
+
+    private static void CopyFilePreservingTime(string sourceFile, string targetFile)
+    {
+        Directory.CreateDirectory(Path.GetDirectoryName(targetFile)!);
+        File.Copy(sourceFile, targetFile, overwrite: true);
+        File.SetLastWriteTimeUtc(targetFile, File.GetLastWriteTimeUtc(sourceFile));
+    }
+
+    private static Dictionary<string, FileSnapshot> SnapshotFiles(DirectoryInfo directory)
+    {
+        Dictionary<string, FileSnapshot> snapshots = new(StringComparer.Ordinal);
+        if (!directory.Exists)
+        {
+            return snapshots;
+        }
+
+        foreach (FileInfo file in directory.EnumerateFiles("*", SearchOption.AllDirectories))
+        {
+            string relativePath = Path.GetRelativePath(directory.FullName, file.FullName)
+                .Replace(Path.DirectorySeparatorChar, '/')
+                .Replace(Path.AltDirectorySeparatorChar, '/');
+
+            if (ShouldExcludeSyncPath(relativePath))
+            {
+                continue;
+            }
+
+            snapshots[relativePath] = FileSnapshot.FromFile(directory.FullName, file, relativePath);
+        }
+
+        return snapshots;
+    }
+
+    private static bool ShouldExcludeSyncPath(string relativePath)
+    {
+        string normalized = relativePath.Replace('\\', '/');
+        return normalized.StartsWith("_neowtwork/", StringComparison.OrdinalIgnoreCase) ||
+               normalized.StartsWith("_neowtwork_backups/", StringComparison.OrdinalIgnoreCase) ||
+               normalized.StartsWith("_neowtwork_tmp/", StringComparison.OrdinalIgnoreCase);
     }
 
     private sealed record ImportCandidate(

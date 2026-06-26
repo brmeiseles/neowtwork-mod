@@ -23,6 +23,7 @@ public partial class MainFile : Node
         harmony.PatchAll();
 
         ModConfigRegistry.Register(ModId, new NeowtworkConfig());
+        VanillaProgressImportAssistant.TryAutoSync(Logger);
         VanillaProgressImportAssistant.TryOfferImport(Logger);
         RunHistoryScanner.ScanAndLog(Logger);
     }

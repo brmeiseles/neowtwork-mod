@@ -21,6 +21,11 @@ Neowtwork uses semantic versioning.
   - Adds dashboard tabs for overview, cards, relics, card/relic combos, ancients, events, monsters, and shops.
   - Adds filters for character, ascension, singleplayer/multiplayer, and win/loss.
   - Adds non-starter card/relic combo summaries, best upgrades, best enchanted cards, and ancient offer summaries.
+- First-pass two-way local progress sync controls.
+  - Adds an opt-in `Keep Base Game + Modded Progress in Sync` setting.
+  - Adds manual `Sync Progress Now` and sync status controls.
+  - Copies missing/newer local files in both directions while preserving unique files and creating backups before writes.
+  - Skips same-timestamp conflicts instead of guessing.
 
 ### Changed
 
