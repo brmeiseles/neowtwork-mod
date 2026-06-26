@@ -13,6 +13,74 @@ internal static class RunHistoryAnalytics
 {
     private static RunHistoryIndex? CachedIndex;
 
+    public enum DashboardTab
+    {
+        Overview,
+        Cards,
+        Relics,
+        Combos,
+        Ancients,
+        Events,
+        Monsters,
+        Shops
+    }
+
+    public enum PlayerModeFilter
+    {
+        All,
+        Singleplayer,
+        Multiplayer
+    }
+
+    public enum RunResultFilter
+    {
+        All,
+        Wins,
+        Losses
+    }
+
+    public sealed record DashboardFilter(
+        string? Character = null,
+        int? Ascension = null,
+        PlayerModeFilter PlayerMode = PlayerModeFilter.All,
+        RunResultFilter Result = RunResultFilter.All)
+    {
+        public bool Matches(RunRecord run)
+        {
+            if (Character is not null && !run.Characters.Contains(Character, StringComparer.Ordinal))
+            {
+                return false;
+            }
+
+            if (Ascension.HasValue && run.Ascension != Ascension)
+            {
+                return false;
+            }
+
+            if (PlayerMode == PlayerModeFilter.Singleplayer && run.PlayerCount != 1)
+            {
+                return false;
+            }
+
+            if (PlayerMode == PlayerModeFilter.Multiplayer && run.PlayerCount <= 1)
+            {
+                return false;
+            }
+
+            if (Result == RunResultFilter.Wins && !run.Won)
+            {
+                return false;
+            }
+
+            if (Result == RunResultFilter.Losses && !run.CountedAsLoss)
+            {
+                return false;
+            }
+
+            return true;
+        }
+    }
+
     public static RunHistoryIndex GetIndex()
     {
         return CachedIndex ??= BuildIndex();
@@ -36,76 +104,75 @@ internal static class RunHistoryAnalytics
 
     public static string BuildDashboardText()
     {
+        return BuildDashboardText(DashboardTab.Overview, new DashboardFilter(), compact: false);
+    }
+
+    public static string BuildDashboardText(DashboardTab tab, DashboardFilter filter, bool compact = true)
+    {
         RunHistoryIndex index = GetIndex();
+        List<RunRecord> runs = index.Runs.Where(filter.Matches).ToList();
         StringBuilder builder = new();
 
-        builder.AppendLine("Run History Analytics");
+        builder.AppendLine(compact ? $"{DashboardTabTitle(tab)}" : "Run History Analytics");
         builder.AppendLine();
-        builder.AppendLine($"Runs indexed: {index.TotalRuns} ({index.Wins} wins, {index.Losses} losses, {FormatPercent(index.WinRate)} win rate)");
-        builder.AppendLine($"Players indexed: {index.PlayerEntries}");
-        builder.AppendLine($"History folders: {index.HistoryFolderCount}; duplicate run files skipped: {index.DuplicateFilesSkipped}; unreadable files skipped: {index.FailedFiles}");
+        builder.AppendLine(BuildRunSummaryLine(runs));
+        builder.AppendLine($"Filters: {BuildFilterSummary(filter)}");
+        if (!compact)
+        {
+            builder.AppendLine($"All files indexed: {index.TotalRuns} runs; {index.PlayerEntries} player entries");
+            builder.AppendLine($"History folders: {index.HistoryFolderCount}; duplicate run files skipped: {index.DuplicateFilesSkipped}; unreadable files skipped: {index.FailedFiles}");
+        }
         builder.AppendLine();
 
-        AppendSection(builder, "Characters", index.Characters
-            .OrderByDescending(pair => pair.Value.Count)
-            .ThenBy(pair => pair.Key)
-            .Take(8)
-            .Select(pair => $"{PrettyId(pair.Key)}: {pair.Value.Count} runs, {FormatPercent(pair.Value.WinRate)} WR"));
-
-        AppendSection(builder, "Best Cards by Final Deck Win Rate", index.FinalDeckCards
-            .Where(pair => pair.Value.Count >= 5)
-            .OrderByDescending(pair => pair.Value.WinRate)
-            .ThenByDescending(pair => pair.Value.Wins)
-            .ThenBy(pair => pair.Key)
-            .Take(12)
-            .Select(pair => $"{PrettyId(pair.Key)}: {FormatPercent(pair.Value.WinRate)} WR ({pair.Value.Wins}-{pair.Value.Losses})"));
-
-        AppendSection(builder, "Most-Picked Card Rewards", index.CardChoices
-            .Where(pair => pair.Value.Seen > 0)
-            .OrderByDescending(pair => pair.Value.PickRate)
-            .ThenByDescending(pair => pair.Value.Picked)
-            .ThenBy(pair => pair.Key)
-            .Take(12)
-            .Select(pair => $"{PrettyId(pair.Key)}: {FormatPercent(pair.Value.PickRate)} pick rate ({pair.Value.Picked}/{pair.Value.Seen})"));
-
-        AppendSection(builder, "Relics in Winning Decks", index.Relics
-            .Where(pair => pair.Value.Count >= 3)
-            .OrderByDescending(pair => pair.Value.WinRate)
-            .ThenByDescending(pair => pair.Value.Wins)
-            .ThenBy(pair => pair.Key)
-            .Take(12)
-            .Select(pair => $"{PrettyId(pair.Key)}: {FormatPercent(pair.Value.WinRate)} WR ({pair.Value.Wins}-{pair.Value.Losses})"));
-
-        AppendSection(builder, "Event Choices", index.EventChoices
-            .Where(pair => pair.Value.Count >= 2)
-            .OrderByDescending(pair => pair.Value.Count)
-            .ThenByDescending(pair => pair.Value.WinRate)
-            .ThenBy(pair => pair.Key)
-            .Take(12)
-            .Select(pair => $"{PrettyEventChoice(pair.Key)}: chosen {pair.Value.Count} times, {FormatPercent(pair.Value.WinRate)} WR"));
-
-        AppendSection(builder, "Monster Trouble", index.DeathMonsters
-            .OrderByDescending(pair => pair.Value.Count)
-            .ThenBy(pair => pair.Key)
-            .Take(12)
-            .Select(pair => $"{PrettyId(pair.Key)}: present in {pair.Value.Count} death encounters"));
-
-        AppendSection(builder, "Pathing Snapshot", index.RoomTypes
-            .OrderByDescending(pair => pair.Value.Count)
-            .ThenBy(pair => pair.Key)
-            .Take(10)
-            .Select(pair => $"{PrettyId(pair.Key)}: {pair.Value.Count} rooms, {FormatPercent(pair.Value.WinRate)} run WR when visited"));
-
-        AppendSection(builder, "Shop Snapshot", BuildShopLines(index));
-
-        AppendSection(builder, "Card/Relic Combos in Winning Runs", index.CardRelicCombos
-            .Where(pair => pair.Value.Count >= 3)
-            .OrderByDescending(pair => pair.Value.Count)
-            .ThenBy(pair => pair.Key)
-            .Take(12)
-            .Select(pair => $"{PrettyCombo(pair.Key)}: {pair.Value.Count} winning runs"));
+        switch (tab)
+        {
+            case DashboardTab.Cards:
+                AppendCardsDashboard(builder, runs);
+                break;
+            case DashboardTab.Relics:
+                AppendRelicsDashboard(builder, runs);
+                break;
+            case DashboardTab.Combos:
+                AppendCombosDashboard(builder, runs);
+                break;
+            case DashboardTab.Ancients:
+                AppendAncientsDashboard(builder, runs);
+                break;
+            case DashboardTab.Events:
+                AppendEventsDashboard(builder, runs);
+                break;
+            case DashboardTab.Monsters:
+                AppendMonstersDashboard(builder, runs);
+                break;
+            case DashboardTab.Shops:
+                AppendShopsDashboard(builder, runs);
+                break;
+            case DashboardTab.Overview:
+            default:
+                AppendOverviewDashboard(builder, runs, index);
+                break;
+        }
 
         return builder.ToString().TrimEnd();
+    }
+
+    public static IReadOnlyList<string> GetFilterCharacters()
+    {
+        return GetIndex().Runs
+            .SelectMany(run => run.Characters)
+            .Distinct(StringComparer.Ordinal)
+            .OrderBy(PrettyId)
+            .ToArray();
+    }
+
+    public static IReadOnlyList<int> GetFilterAscensions()
+    {
+        return GetIndex().Runs
+            .Where(run => run.Ascension.HasValue)
+            .Select(run => run.Ascension!.Value)
+            .Distinct()
+            .OrderBy(value => value)
+            .ToArray();
     }
 
     private static RunHistoryIndex BuildIndex()
@@ -162,6 +229,7 @@ internal static class RunHistoryAnalytics
         bool won = TryGetBoolean(root, "win", out bool win) && win;
         bool abandoned = TryGetBoolean(root, "was_abandoned", out bool wasAbandoned) && wasAbandoned;
         bool countedAsLoss = !won && !abandoned;
+        int? ascension = TryGetInt(root, "ascension", out int parsedAscension) ? parsedAscension : null;
 
         index.TotalRuns++;
         if (won)
@@ -178,7 +246,16 @@ internal static class RunHistoryAnalytics
         }
 
         HashSet<string> runFinalCardIds = [];
+        HashSet<string> runNonStarterFinalCardIds = [];
         HashSet<string> runRelicIds = [];
+        HashSet<string> runNonStarterRelicIds = [];
+        HashSet<string> runCharacters = [];
+        List<CardChoiceRecord> runCardChoices = [];
+        List<string> runEventChoiceKeys = [];
+        HashSet<string> runUpgradedCardIds = [];
+        HashSet<string> runEnchantedCardIds = [];
+        HashSet<string> runEnchantmentIds = [];
+        List<AncientChoiceRecord> runAncientChoices = [];
         HashSet<string> lastEncounterMonsterIds = [];
         Dictionary<string, int> roomCounts = [];
         decimal runShopGoldSpent = 0;
@@ -194,17 +271,28 @@ internal static class RunHistoryAnalytics
             foreach (JsonElement player in players.EnumerateArray())
             {
                 string character = TryGetString(player, "character", out string? characterId) ? characterId! : "Unknown";
+                runCharacters.Add(character);
                 index.Characters.GetOrAdd(character).AddResult(won, countedAsLoss);
 
-                foreach (string cardId in EnumerateIds(player, "deck"))
+                foreach ((string cardId, bool isStarter) in EnumerateDeckCards(player))
                 {
                     runFinalCardIds.Add(cardId);
+                    if (!isStarter)
+                    {
+                        runNonStarterFinalCardIds.Add(cardId);
+                    }
+
                     index.FinalDeckCards.GetOrAdd(cardId).AddResult(won, countedAsLoss);
                 }
 
-                foreach (string relicId in EnumerateIds(player, "relics"))
+                foreach ((string relicId, bool isStarter) in EnumerateRelicsWithStarterFlag(player))
                 {
                     runRelicIds.Add(relicId);
+                    if (!isStarter)
+                    {
+                        runNonStarterRelicIds.Add(relicId);
+                    }
+
                     index.Relics.GetOrAdd(relicId).AddResult(won, countedAsLoss);
                 }
             }
@@ -238,8 +326,10 @@ internal static class RunHistoryAnalytics
                 {
                     foreach (JsonElement stats in playerStats.EnumerateArray())
                     {
-                        ParseCardChoices(index, stats, won, countedAsLoss);
-                        ParseEventChoices(index, stats, won, countedAsLoss);
+                        ParseCardChoices(index, stats, won, countedAsLoss, runCardChoices);
+                        ParseEventChoices(index, stats, won, countedAsLoss, runEventChoiceKeys);
+                        ParseUpgradesAndEnchantments(stats, runUpgradedCardIds, runEnchantedCardIds, runEnchantmentIds);
+                        ParseAncientChoices(stats, runAncientChoices);
 
                         if (isShopMapPoint)
                         {
@@ -261,7 +351,7 @@ internal static class RunHistoryAnalytics
 
         if (won)
         {
-            foreach (string comboKey in BuildCardRelicCombos(runFinalCardIds, runRelicIds))
+            foreach (string comboKey in BuildCardRelicCombos(runNonStarterFinalCardIds, runNonStarterRelicIds))
             {
                 index.CardRelicCombos.GetOrAdd(comboKey).AddWinOnly();
             }
@@ -289,9 +379,39 @@ internal static class RunHistoryAnalytics
             index.ShopBoughtColorless += runBoughtColorless;
             index.ShopCardsGained += runShopCardsGained;
         }
+
+        index.Runs.Add(new RunRecord(
+            Won: won,
+            CountedAsLoss: countedAsLoss,
+            Abandoned: abandoned,
+            Ascension: ascension,
+            PlayerCount: players.ValueKind == JsonValueKind.Array ? players.GetArrayLength() : 1,
+            Characters: [.. runCharacters],
+            FinalCardIds: [.. runFinalCardIds],
+            NonStarterFinalCardIds: [.. runNonStarterFinalCardIds],
+            RelicIds: [.. runRelicIds],
+            NonStarterRelicIds: [.. runNonStarterRelicIds],
+            CardChoices: runCardChoices,
+            EventChoiceKeys: runEventChoiceKeys,
+            DeathMonsterIds: [.. lastEncounterMonsterIds],
+            RoomCounts: new Dictionary<string, int>(roomCounts, StringComparer.Ordinal),
+            ShopGoldSpent: runShopGoldSpent,
+            ShopBoughtRelics: runBoughtRelics,
+            ShopBoughtPotions: runBoughtPotions,
+            ShopBoughtColorless: runBoughtColorless,
+            ShopCardsGained: runShopCardsGained,
+            UpgradedCardIds: [.. runUpgradedCardIds],
+            EnchantedCardIds: [.. runEnchantedCardIds],
+            EnchantmentIds: [.. runEnchantmentIds],
+            AncientChoices: runAncientChoices));
     }
 
-    private static void ParseCardChoices(RunHistoryIndex index, JsonElement stats, bool won, bool countedAsLoss)
+    private static void ParseCardChoices(
+        RunHistoryIndex index,
+        JsonElement stats,
+        bool won,
+        bool countedAsLoss,
+        List<CardChoiceRecord> runCardChoices)
     {
         if (!TryGetArray(stats, "card_choices", out JsonElement choices))
         {
@@ -308,11 +428,17 @@ internal static class RunHistoryAnalytics
             }
 
             bool picked = TryGetBoolean(choice, "was_picked", out bool wasPicked) && wasPicked;
+            runCardChoices.Add(new CardChoiceRecord(cardId, picked));
             index.CardChoices.GetOrAdd(cardId).AddChoice(picked, won, countedAsLoss);
         }
     }
 
-    private static void ParseEventChoices(RunHistoryIndex index, JsonElement stats, bool won, bool countedAsLoss)
+    private static void ParseEventChoices(
+        RunHistoryIndex index,
+        JsonElement stats,
+        bool won,
+        bool countedAsLoss,
+        List<string> runEventChoiceKeys)
     {
         if (!TryGetArray(stats, "event_choices", out JsonElement choices))
         {
@@ -330,7 +456,54 @@ internal static class RunHistoryAnalytics
                 continue;
             }
 
-            index.EventChoices.GetOrAdd(EventChoiceKey(table, key)).AddResult(won, countedAsLoss);
+            string choiceKey = EventChoiceKey(table, key);
+            runEventChoiceKeys.Add(choiceKey);
+            index.EventChoices.GetOrAdd(choiceKey).AddResult(won, countedAsLoss);
+        }
+    }
+
+    private static void ParseUpgradesAndEnchantments(
+        JsonElement stats,
+        HashSet<string> upgradedCardIds,
+        HashSet<string> enchantedCardIds,
+        HashSet<string> enchantmentIds)
+    {
+        foreach (string cardId in EnumerateFlexibleCardIds(stats, "upgraded_cards"))
+        {
+            upgradedCardIds.Add(cardId);
+        }
+
+        foreach (string cardId in EnumerateFlexibleCardIds(stats, "cards_enchanted"))
+        {
+            enchantedCardIds.Add(cardId);
+        }
+
+        foreach (string enchantmentId in EnumerateFlexibleIds(stats, "enchantments"))
+        {
+            enchantmentIds.Add(enchantmentId);
+        }
+    }
+
+    private static void ParseAncientChoices(JsonElement stats, List<AncientChoiceRecord> runAncientChoices)
+    {
+        if (!TryGetArray(stats, "ancient_choice", out JsonElement choices))
+        {
+            return;
+        }
+
+        foreach (JsonElement choice in choices.EnumerateArray())
+        {
+            if (!TryGetObject(choice, "title", out JsonElement title) ||
+                !TryGetString(title, "table", out string? table) ||
+                !TryGetString(title, "key", out string? key) ||
+                table is null ||
+                key is null)
+            {
+                continue;
+            }
+
+            bool picked = TryGetBoolean(choice, "was_chosen", out bool wasChosen) && wasChosen;
+            runAncientChoices.Add(new AncientChoiceRecord(EventChoiceKey(table, key), picked));
         }
     }
 
@@ -364,6 +537,300 @@ internal static class RunHistoryAnalytics
                 yield return actOrMapPoint;
             }
         }
+    }
+
+    private static void AppendOverviewDashboard(StringBuilder builder, IReadOnlyCollection<RunRecord> runs, RunHistoryIndex index)
+    {
+        Dictionary<string, MetricSummary> characters = SummarizeMetric(runs, run => run.Characters);
+
+        AppendSection(builder, "Characters", characters
+            .OrderByDescending(pair => pair.Value.Count)
+            .ThenBy(pair => pair.Key)
+            .Take(8)
+            .Select(pair => $"{PrettyId(pair.Key)}: {pair.Value.Count} runs, {FormatPercent(pair.Value.WinRate)} win rate"));
+
+        AppendSection(builder, "Top Signals", [
+            $"Best card: {FormatTopMetric(SummarizeMetric(runs, run => run.NonStarterFinalCardIds), minimumCount: 5)}",
+            $"Best relic: {FormatTopMetric(SummarizeMetric(runs, run => run.NonStarterRelicIds), minimumCount: 3)}",
+            $"Most common death enemy: {FormatTopCount(SummarizeCount(runs.SelectMany(run => run.DeathMonsterIds)))}",
+            $"Most common event choice: {FormatTopMetric(SummarizeMetric(runs, run => run.EventChoiceKeys), minimumCount: 2)}"
+        ]);
+
+        AppendSection(builder, "Pathing Snapshot", SummarizeWeightedMetric(runs, run => run.RoomCounts)
+            .OrderByDescending(pair => pair.Value.Count)
+            .ThenBy(pair => pair.Key)
+            .Take(10)
+            .Select(pair => $"{PrettyId(pair.Key)}: {pair.Value.Count} rooms, {FormatPercent(pair.Value.WinRate)} run win rate when visited"));
+
+        if (runs.Count == index.TotalRuns)
+        {
+            AppendSection(builder, "Index Health", [
+                $"History folders: {index.HistoryFolderCount}",
+                $"Duplicate run files skipped: {index.DuplicateFilesSkipped}",
+                $"Unreadable files skipped: {index.FailedFiles}"
+            ]);
+        }
+    }
+
+    private static void AppendCardsDashboard(StringBuilder builder, IReadOnlyCollection<RunRecord> runs)
+    {
+        AppendSection(builder, "Best Non-Starter Cards in Final Decks", SummarizeMetric(runs, run => run.NonStarterFinalCardIds)
+            .Where(pair => pair.Value.Count >= 5)
+            .OrderByDescending(pair => pair.Value.WinRate)
+            .ThenByDescending(pair => pair.Value.Wins)
+            .ThenBy(pair => pair.Key)
+            .Take(12)
+            .Select(pair => $"{PrettyId(pair.Key)}: {FormatPercent(pair.Value.WinRate)} win rate ({pair.Value.Wins}-{pair.Value.Losses}), {pair.Value.Count} final decks"));
+
+        AppendSection(builder, "Most-Picked Card Rewards", SummarizeCardChoices(runs)
+            .Where(pair => pair.Value.Seen > 0)
+            .OrderByDescending(pair => pair.Value.PickRate)
+            .ThenByDescending(pair => pair.Value.Picked)
+            .ThenBy(pair => pair.Key)
+            .Take(12)
+            .Select(pair => $"{PrettyId(pair.Key)}: {FormatPercent(pair.Value.PickRate)} pick rate ({pair.Value.Picked}/{pair.Value.Seen}), {FormatPercent(pair.Value.WinRate)} win rate when picked"));
+
+        AppendSection(builder, "Best Upgrades", SummarizeMetric(runs, run => run.UpgradedCardIds)
+            .Where(pair => pair.Value.Count >= 2)
+            .OrderByDescending(pair => pair.Value.WinRate)
+            .ThenByDescending(pair => pair.Value.Count)
+            .ThenBy(pair => pair.Key)
+            .Take(10)
+            .Select(pair => $"{PrettyId(pair.Key)}+: {FormatPercent(pair.Value.WinRate)} win rate ({pair.Value.Wins}-{pair.Value.Losses}), upgraded in {pair.Value.Count} runs"));
+
+        AppendSection(builder, "Best Enchanted Cards", SummarizeMetric(runs, run => run.EnchantedCardIds)
+            .Where(pair => pair.Value.Count >= 2)
+            .OrderByDescending(pair => pair.Value.WinRate)
+            .ThenByDescending(pair => pair.Value.Count)
+            .ThenBy(pair => pair.Key)
+            .Take(10)
+            .Select(pair => $"{PrettyId(pair.Key)}: {FormatPercent(pair.Value.WinRate)} win rate ({pair.Value.Wins}-{pair.Value.Losses}), enchanted in {pair.Value.Count} runs"));
+    }
+
+    private static void AppendRelicsDashboard(StringBuilder builder, IReadOnlyCollection<RunRecord> runs)
+    {
+        AppendSection(builder, "Best Non-Starter Relics", SummarizeMetric(runs, run => run.NonStarterRelicIds)
+            .Where(pair => pair.Value.Count >= 3)
+            .OrderByDescending(pair => pair.Value.WinRate)
+            .ThenByDescending(pair => pair.Value.Wins)
+            .ThenBy(pair => pair.Key)
+            .Take(16)
+            .Select(pair => $"{PrettyId(pair.Key)}: {FormatPercent(pair.Value.WinRate)} win rate ({pair.Value.Wins}-{pair.Value.Losses}), seen in {pair.Value.Count} final builds"));
+
+        AppendSection(builder, "Most Common Non-Starter Relics", SummarizeMetric(runs, run => run.NonStarterRelicIds)
+            .OrderByDescending(pair => pair.Value.Count)
+            .ThenByDescending(pair => pair.Value.WinRate)
+            .ThenBy(pair => pair.Key)
+            .Take(16)
+            .Select(pair => $"{PrettyId(pair.Key)}: {pair.Value.Count} final builds, {FormatPercent(pair.Value.WinRate)} win rate"));
+    }
+
+    private static void AppendCombosDashboard(StringBuilder builder, IReadOnlyCollection<RunRecord> runs)
+    {
+        Dictionary<string, MetricSummary> comboStats = [];
+        foreach (RunRecord run in runs)
+        {
+            foreach (string comboKey in BuildCardRelicCombos(run.NonStarterFinalCardIds.ToHashSet(StringComparer.Ordinal), run.NonStarterRelicIds.ToHashSet(StringComparer.Ordinal)))
+            {
+                comboStats.GetOrAdd(comboKey).AddResult(run.Won, run.CountedAsLoss);
+            }
+        }
+
+        AppendSection(builder, "Card + Relic Combos", comboStats
+            .Where(pair => pair.Value.Count >= 3)
+            .OrderByDescending(pair => pair.Value.WinRate)
+            .ThenByDescending(pair => pair.Value.Wins)
+            .ThenByDescending(pair => pair.Value.Count)
+            .ThenBy(pair => pair.Key)
+            .Take(18)
+            .Select(pair => $"{PrettyCombo(pair.Key)}: {FormatPercent(pair.Value.WinRate)} win rate ({pair.Value.Wins}-{pair.Value.Losses}), {pair.Value.Count} runs"));
+    }
+
+    private static void AppendAncientsDashboard(StringBuilder builder, IReadOnlyCollection<RunRecord> runs)
+    {
+        Dictionary<string, ChoiceMetricSummary> ancientStats = [];
+        foreach (RunRecord run in runs)
+        {
+            foreach (AncientChoiceRecord choice in run.AncientChoices)
+            {
+                ancientStats.GetOrAdd(choice.ChoiceKey).AddChoice(choice.Picked, run.Won, run.CountedAsLoss);
+            }
+        }
+
+        AppendSection(builder, "Ancient Offers", ancientStats
+            .Where(pair => pair.Value.Seen > 0)
+            .OrderByDescending(pair => pair.Value.Seen)
+            .ThenByDescending(pair => pair.Value.PickRate)
+            .ThenBy(pair => pair.Key)
+            .Take(18)
+            .Select(pair => $"{PrettyEventChoice(pair.Key)}: offered {pair.Value.Seen}, picked {pair.Value.Picked} ({FormatPercent(pair.Value.PickRate)}), {FormatPercent(pair.Value.WinRate)} win rate after picking"));
+    }
+
+    private static void AppendEventsDashboard(StringBuilder builder, IReadOnlyCollection<RunRecord> runs)
+    {
+        AppendSection(builder, "Event Choices", SummarizeMetric(runs, run => run.EventChoiceKeys)
+            .Where(pair => pair.Value.Count >= 2)
+            .OrderByDescending(pair => pair.Value.Count)
+            .ThenByDescending(pair => pair.Value.WinRate)
+            .ThenBy(pair => pair.Key)
+            .Take(18)
+            .Select(pair => $"{PrettyEventChoice(pair.Key)}: chosen {pair.Value.Count} times, {FormatPercent(pair.Value.WinRate)} win rate ({pair.Value.Wins}-{pair.Value.Losses})"));
+    }
+
+    private static void AppendMonstersDashboard(StringBuilder builder, IReadOnlyCollection<RunRecord> runs)
+    {
+        AppendSection(builder, "Monster Trouble", SummarizeCount(runs.SelectMany(run => run.DeathMonsterIds))
+            .OrderByDescending(pair => pair.Value)
+            .ThenBy(pair => pair.Key)
+            .Take(18)
+            .Select(pair => $"{PrettyId(pair.Key)}: present in {pair.Value} death encounters"));
+    }
+
+    private static void AppendShopsDashboard(StringBuilder builder, IReadOnlyCollection<RunRecord> runs)
+    {
+        int shopRuns = runs.Count(run => run.ShopGoldSpent > 0 || run.ShopBoughtRelics > 0 || run.ShopBoughtPotions > 0 || run.ShopBoughtColorless > 0 || run.ShopCardsGained > 0);
+        int shopWins = runs.Count(run => run.Won && (run.ShopGoldSpent > 0 || run.ShopBoughtRelics > 0 || run.ShopBoughtPotions > 0 || run.ShopBoughtColorless > 0 || run.ShopCardsGained > 0));
+        int shopLosses = runs.Count(run => run.CountedAsLoss && (run.ShopGoldSpent > 0 || run.ShopBoughtRelics > 0 || run.ShopBoughtPotions > 0 || run.ShopBoughtColorless > 0 || run.ShopCardsGained > 0));
+
+        AppendSection(builder, "Shop Snapshot", [
+            $"Runs with shop purchases: {shopRuns}, {FormatPercent(Rate(shopWins, shopLosses))} win rate",
+            $"Gold spent in shops: {runs.Sum(run => run.ShopGoldSpent):0}",
+            $"Bought relics: {runs.Sum(run => run.ShopBoughtRelics)}",
+            $"Bought potions: {runs.Sum(run => run.ShopBoughtPotions)}",
+            $"Bought colorless cards: {runs.Sum(run => run.ShopBoughtColorless)}",
+            $"Cards gained in shop rooms: {runs.Sum(run => run.ShopCardsGained)}"
+        ]);
+    }
+
+    private static string BuildRunSummaryLine(IReadOnlyCollection<RunRecord> runs)
+    {
+        int wins = runs.Count(run => run.Won);
+        int losses = runs.Count(run => run.CountedAsLoss);
+        int abandoned = runs.Count(run => run.Abandoned);
+        return $"Runs: {runs.Count} ({wins} wins, {losses} losses, {abandoned} abandoned, {FormatPercent(Rate(wins, losses))} win rate)";
+    }
+
+    private static string BuildFilterSummary(DashboardFilter filter)
+    {
+        List<string> parts = [];
+        parts.Add(filter.Character is null ? "all characters" : PrettyId(filter.Character));
+        parts.Add(filter.Ascension is null ? "all ascensions" : $"A{filter.Ascension}");
+        parts.Add(filter.PlayerMode switch
+        {
+            PlayerModeFilter.Singleplayer => "singleplayer",
+            PlayerModeFilter.Multiplayer => "multiplayer",
+            _ => "single + multiplayer"
+        });
+        parts.Add(filter.Result switch
+        {
+            RunResultFilter.Wins => "wins only",
+            RunResultFilter.Losses => "losses only",
+            _ => "wins + losses"
+        });
+        return string.Join(" · ", parts);
+    }
+
+    private static string DashboardTabTitle(DashboardTab tab)
+    {
+        return tab switch
+        {
+            DashboardTab.Cards => "Card Analytics",
+            DashboardTab.Relics => "Relic Analytics",
+            DashboardTab.Combos => "Card + Relic Combos",
+            DashboardTab.Ancients => "Ancient Offers",
+            DashboardTab.Events => "Event Choices",
+            DashboardTab.Monsters => "Monster Trouble",
+            DashboardTab.Shops => "Shop Patterns",
+            _ => "Neowtwork Dashboard"
+        };
+    }
+
+    private static Dictionary<string, MetricSummary> SummarizeMetric(
+        IEnumerable<RunRecord> runs,
+        Func<RunRecord, IEnumerable<string>> selector)
+    {
+        Dictionary<string, MetricSummary> summary = [];
+        foreach (RunRecord run in runs)
+        {
+            foreach (string id in selector(run).Distinct(StringComparer.Ordinal))
+            {
+                summary.GetOrAdd(id).AddResult(run.Won, run.CountedAsLoss);
+            }
+        }
+
+        return summary;
+    }
+
+    private static Dictionary<string, MetricSummary> SummarizeWeightedMetric(
+        IEnumerable<RunRecord> runs,
+        Func<RunRecord, IReadOnlyDictionary<string, int>> selector)
+    {
+        Dictionary<string, MetricSummary> summary = [];
+        foreach (RunRecord run in runs)
+        {
+            foreach ((string id, int count) in selector(run))
+            {
+                summary.GetOrAdd(id).AddWeightedResult(count, run.Won, run.CountedAsLoss);
+            }
+        }
+
+        return summary;
+    }
+
+    private static Dictionary<string, ChoiceMetricSummary> SummarizeCardChoices(IEnumerable<RunRecord> runs)
+    {
+        Dictionary<string, ChoiceMetricSummary> summary = [];
+        foreach (RunRecord run in runs)
+        {
+            foreach (CardChoiceRecord choice in run.CardChoices)
+            {
+                summary.GetOrAdd(choice.CardId).AddChoice(choice.Picked, run.Won, run.CountedAsLoss);
+            }
+        }
+
+        return summary;
+    }
+
+    private static Dictionary<string, int> SummarizeCount(IEnumerable<string> ids)
+    {
+        Dictionary<string, int> summary = [];
+        foreach (string id in ids)
+        {
+            summary[id] = summary.GetValueOrDefault(id) + 1;
+        }
+
+        return summary;
+    }
+
+    private static string FormatTopMetric(Dictionary<string, MetricSummary> summary, int minimumCount)
+    {
+        KeyValuePair<string, MetricSummary> top = summary
+            .Where(pair => pair.Value.Count >= minimumCount)
+            .OrderByDescending(pair => pair.Value.WinRate)
+            .ThenByDescending(pair => pair.Value.Wins)
+            .ThenBy(pair => pair.Key)
+            .FirstOrDefault();
+
+        return string.IsNullOrWhiteSpace(top.Key)
+            ? "not enough data yet"
+            : $"{PrettyId(top.Key)} ({FormatPercent(top.Value.WinRate)}, {top.Value.Wins}-{top.Value.Losses})";
+    }
+
+    private static string FormatTopCount(Dictionary<string, int> summary)
+    {
+        KeyValuePair<string, int> top = summary
+            .OrderByDescending(pair => pair.Value)
+            .ThenBy(pair => pair.Key)
+            .FirstOrDefault();
+
+        return string.IsNullOrWhiteSpace(top.Key)
+            ? "not enough data yet"
+            : $"{PrettyId(top.Key)} ({top.Value})";
+    }
+
+    private static double Rate(int wins, int losses)
+    {
+        return wins + losses == 0 ? 0d : (double)wins / (wins + losses);
     }
 
     private static IEnumerable<string> BuildShopLines(RunHistoryIndex index)
@@ -475,6 +942,127 @@ internal static class RunHistoryAnalytics
         }
     }
 
+    private static IEnumerable<(string Id, bool IsStarter)> EnumerateDeckCards(JsonElement player)
+    {
+        if (!TryGetArray(player, "deck", out JsonElement array))
+        {
+            yield break;
+        }
+
+        foreach (JsonElement item in array.EnumerateArray())
+        {
+            if (!TryGetString(item, "id", out string? id) || id is null)
+            {
+                continue;
+            }
+
+            bool isStarter = TryGetInt(item, "floor_added_to_deck", out int floorAdded) && floorAdded <= 0;
+            if (!TryGetInt(item, "floor_added_to_deck", out _))
+            {
+                isStarter = false;
+            }
+
+            if (TryGetObject(item, "enchantment", out JsonElement enchantment) &&
+                TryGetString(enchantment, "id", out string? enchantmentId) &&
+                enchantmentId is not null)
+            {
+                // Enchantment details are summarized separately from the card list.
+            }
+
+            yield return (id, isStarter);
+        }
+    }
+
+    private static IEnumerable<(string Id, bool IsStarter)> EnumerateRelicsWithStarterFlag(JsonElement player)
+    {
+        if (!TryGetArray(player, "relics", out JsonElement array))
+        {
+            yield break;
+        }
+
+        foreach (JsonElement item in array.EnumerateArray())
+        {
+            if (!TryGetString(item, "id", out string? id) || id is null)
+            {
+                continue;
+            }
+
+            bool isStarter = TryGetInt(item, "floor_added_to_deck", out int floorAdded) && floorAdded <= 0;
+            if (!TryGetInt(item, "floor_added_to_deck", out _))
+            {
+                isStarter = false;
+            }
+
+            yield return (id, isStarter);
+        }
+    }
+
+    private static IEnumerable<string> EnumerateFlexibleIds(JsonElement element, string propertyName)
+    {
+        if (!TryGetArray(element, propertyName, out JsonElement array))
+        {
+            yield break;
+        }
+
+        foreach (JsonElement item in array.EnumerateArray())
+        {
+            if (item.ValueKind == JsonValueKind.String)
+            {
+                string? raw = item.GetString();
+                if (!string.IsNullOrWhiteSpace(raw))
+                {
+                    yield return raw;
+                }
+            }
+            else if (TryGetString(item, "id", out string? id) && id is not null)
+            {
+                yield return id;
+            }
+            else if (TryGetObject(item, "card", out JsonElement card) &&
+                     TryGetString(card, "id", out string? cardId) &&
+                     cardId is not null)
+            {
+                yield return cardId;
+            }
+            else if (TryGetObject(item, "enchantment", out JsonElement enchantment) &&
+                     TryGetString(enchantment, "id", out string? enchantmentId) &&
+                     enchantmentId is not null)
+            {
+                yield return enchantmentId;
+            }
+        }
+    }
+
+    private static IEnumerable<string> EnumerateFlexibleCardIds(JsonElement element, string propertyName)
+    {
+        if (!TryGetArray(element, propertyName, out JsonElement array))
+        {
+            yield break;
+        }
+
+        foreach (JsonElement item in array.EnumerateArray())
+        {
+            if (item.ValueKind == JsonValueKind.String)
+            {
+                string? raw = item.GetString();
+                if (!string.IsNullOrWhiteSpace(raw))
+                {
+                    yield return raw;
+                }
+            }
+            else if (TryGetString(item, "id", out string? id) && id is not null)
+            {
+                yield return id;
+            }
+            else if (TryGetObject(item, "card", out JsonElement card) &&
+                     TryGetString(card, "id", out string? cardId) &&
+                     cardId is not null)
+            {
+                yield return cardId;
+            }
+        }
+    }
+
     private static IEnumerable<string> EnumerateStringArray(JsonElement element, string propertyName)
     {
         if (!TryGetArray(element, propertyName, out JsonElement array))
@@ -554,6 +1142,20 @@ internal static class RunHistoryAnalytics
         return false;
     }
 
+    private static bool TryGetInt(JsonElement element, string propertyName, out int value)
+    {
+        if (element.ValueKind == JsonValueKind.Object &&
+            element.TryGetProperty(propertyName, out JsonElement property) &&
+            property.TryGetInt32(out int parsed))
+        {
+            value = parsed;
+            return true;
+        }
+
+        value = 0;
+        return false;
+    }
+
     private static bool TryGetString(JsonElement element, string propertyName, out string? value)
     {
         if (element.ValueKind == JsonValueKind.Object &&
@@ -567,6 +1169,35 @@ internal static class RunHistoryAnalytics
         value = null;
         return false;
     }
+
+    public sealed record RunRecord(
+        bool Won,
+        bool CountedAsLoss,
+        bool Abandoned,
+        int? Ascension,
+        int PlayerCount,
+        IReadOnlyList<string> Characters,
+        IReadOnlyList<string> FinalCardIds,
+        IReadOnlyList<string> NonStarterFinalCardIds,
+        IReadOnlyList<string> RelicIds,
+        IReadOnlyList<string> NonStarterRelicIds,
+        IReadOnlyList<CardChoiceRecord> CardChoices,
+        IReadOnlyList<string> EventChoiceKeys,
+        IReadOnlyList<string> DeathMonsterIds,
+        IReadOnlyDictionary<string, int> RoomCounts,
+        decimal ShopGoldSpent,
+        int ShopBoughtRelics,
+        int ShopBoughtPotions,
+        int ShopBoughtColorless,
+        int ShopCardsGained,
+        IReadOnlyList<string> UpgradedCardIds,
+        IReadOnlyList<string> EnchantedCardIds,
+        IReadOnlyList<string> EnchantmentIds,
+        IReadOnlyList<AncientChoiceRecord> AncientChoices);
+
+    public sealed record CardChoiceRecord(string CardId, bool Picked);
+
+    public sealed record AncientChoiceRecord(string ChoiceKey, bool Picked);
 
     public sealed class RunHistoryIndex(string userDataDir)
     {
@@ -585,6 +1216,7 @@ internal static class RunHistoryAnalytics
         public int ShopBoughtColorless { get; set; }
         public int ShopCardsGained { get; set; }
         public double WinRate => Wins + Losses == 0 ? 0d : (double)Wins / (Wins + Losses);
+        public List<RunRecord> Runs { get; } = [];
         public Dictionary<string, MetricSummary> Characters { get; } = [];
         public Dictionary<string, MetricSummary> FinalDeckCards { get; } = [];
         public Dictionary<string, ChoiceMetricSummary> CardChoices { get; } = [];

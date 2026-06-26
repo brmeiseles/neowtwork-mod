@@ -17,11 +17,16 @@ Neowtwork uses semantic versioning.
 - Run Analytics dashboard in Neowtwork Mod Configuration.
 - Event-option hover stats showing historical choice count and win rate after choosing.
 - Relic hover stats showing historical final-deck count and win rate with that relic.
+- First-pass Neowtwork Compendium dashboard entry.
+  - Adds dashboard tabs for overview, cards, relics, card/relic combos, ancients, events, monsters, and shops.
+  - Adds filters for character, ascension, singleplayer/multiplayer, and win/loss.
+  - Adds non-starter card/relic combo summaries, best upgrades, best enchanted cards, and ancient offer summaries.
 
 ### Changed
 
 - Aligned the in-run choice card stats overlay size and placement more closely with the Card Library overlay.
 - Run-history analytics now searches the wider Slay the Spire 2 save root when available instead of only the active modded profile folder.
+- Moved the Mod Configuration run analytics view toward a bottom-of-page raw analytics dump, keeping the player-facing dashboard in the Compendium.
 
 ## 0.2.0 - 2026-06-23
 

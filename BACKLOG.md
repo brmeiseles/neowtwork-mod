@@ -13,6 +13,11 @@ Keep the spirit of the game alive: small, readable, native-feeling improvements 
 
 ## Near-term UX polish
 
+- Revisit the Card Library Card Stats filter/sort control from scratch.
+  - The current stats filter still feels visibly worse than newer Neowtwork/native-style UI components.
+  - Goal: make the Card Stats filter look and behave like a real Slay the Spire 2 control, not a bolted-on mod widget.
+  - Prefer reusing or duplicating native game controls now that we have more confidence patching UI surfaces.
+  - Preserve all existing sort behavior and reverse-order behavior.
 - Review the latest Card Stats sorter placement in-game.
   - It should look like the existing `A - Z` sort row when closed.
   - If the back arrow crowds it, decide whether to move it above `A - Z` or redesign the sort area.
@@ -81,10 +86,11 @@ Keep the spirit of the game alive: small, readable, native-feeling improvements 
 
 ## Data and analytics
 
-- Review the first-pass Run Analytics dashboard in Neowtwork Mod Configuration.
-  - Decide which sections deserve to stay, move, collapse, or become their own view.
-  - Decide whether to promote the dashboard into a true native Compendium page.
-  - Treat the current dashboard as a data dump/proving ground, not final UX.
+- Review the first-pass Neowtwork Compendium dashboard.
+  - Confirm the hidden Leaderboards slot is a good long-term home for the Neowtwork dashboard button.
+  - Confirm tabs and filters are readable in the Compendium context.
+  - Decide which sections need stronger visual hierarchy, charts, icons, or cards instead of text-heavy lists.
+  - Keep the Mod Configuration analytics section as a bottom-of-page raw/debug dump.
 - Improve event-option analytics beyond chosen-count/win-rate.
   - Current run history records choices that were selected, not every option that was offered.
   - To show true event pick rate, start tracking offered event options prospectively.
@@ -92,12 +98,15 @@ Keep the spirit of the game alive: small, readable, native-feeling improvements 
 - Review relic hover stats in-game.
   - Current implementation attaches stats to relic hover tips broadly, not only the relic collection page.
   - Decide whether broad relic hover stats feel helpful or too noisy.
-- Add native-feeling filtering to run-history analytics.
-  - Character
-  - Ascension
-  - Singleplayer vs multiplayer
-  - Date/game version
-  - Win/loss
+- Expand native-feeling filtering to run-history analytics.
+  - Current first pass includes character, ascension, singleplayer vs multiplayer, and win/loss.
+  - Future filters to consider:
+    - date
+    - game version
+    - act reached
+    - ancient path
+    - minimum sample size
+    - include/exclude multiplayer
 - Keep using built-in card stats where possible:
   - `TimesWon`
   - `TimesLost`
@@ -118,6 +127,10 @@ Keep the spirit of the game alive: small, readable, native-feeling improvements 
 - Investigate relic stats from `.run` files.
   - Built-in aggregate relic stats do not appear to be available yet.
   - Derive relic performance from historical runs.
+- Polish ancient analytics.
+  - Current first pass summarizes ancient offers/picks/win rate from run history where available.
+  - Split Neow/act-start ancients by act or ancient identity if the run file exposes that reliably.
+  - Consider showing offered relics, picked relics, pick rate, and win rate in a compact native panel.
 - Decide how multiplayer runs should be represented.
   - Separate toggle/filter?
   - Combined stats by default?
@@ -125,6 +138,24 @@ Keep the spirit of the game alive: small, readable, native-feeling improvements 
 
 ## Save and progress sync
 
+- Build an explicit two-way progress sync option.
+  - Working name: `Keep Base Game and Modded Progress in Sync`.
+  - User goal: vanilla and modded profile/run-history files stay in lockstep after opting in.
+  - Sync must handle either side as the newest source:
+    - vanilla → modded when vanilla has newer data
+    - modded → vanilla when modded has newer data
+  - It must keep run history, character progress, compendium unlock/progress, and profile stats aligned where safe.
+  - It must ask for confirmation before first enabling sync.
+  - It must create timestamped backups before every write.
+  - It must never silently delete unique runs from either side.
+  - It must explain Steam Cloud limits clearly: Neowtwork can copy local files, but Steam Cloud may still need user attention if conflicts appear.
+  - Consider a status panel showing:
+    - files only in vanilla
+    - files only in modded
+    - files newer in vanilla
+    - files newer in modded
+    - last sync time
+  - Treat this as a high-safety feature; do not implement casually during unrelated UI work.
 - Test and polish the Mod Configuration vanilla-to-modded progress import flow.
   - Must ask before copying anything.
   - Must explain what will happen.
@@ -145,6 +176,10 @@ Keep the spirit of the game alive: small, readable, native-feeling improvements 
 ## Friend testing
 
 - Keep `FRIEND_TEST.md` current with the actual UI.
+- Fix the manual friend-test zip/package flow.
+  - Package must include the exact current build and install instructions.
+  - Confirm the zip works for both Mac and Windows users.
+  - Goal: Brandon and a friend can both install the same Neowtwork build and play a multiplayer run with the mod enabled.
 - Package a fresh manual test zip after significant UX or install changes.
 - Ask testers to report:
   - OS
