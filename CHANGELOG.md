@@ -6,6 +6,8 @@ Neowtwork uses semantic versioning.
 
 ## Unreleased
 
+## 0.3.0 - 2026-06-26
+
 ### Added
 
 - `Card Stats During Choices` Mod Configuration setting with `Off`, `Show`, and `Hover` modes.
