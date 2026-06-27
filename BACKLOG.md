@@ -13,11 +13,11 @@ Keep the spirit of the game alive: small, readable, native-feeling improvements 
 
 ## Near-term UX polish
 
-- Revisit the Card Library Card Stats filter/sort control from scratch.
-  - The current stats filter still feels visibly worse than newer Neowtwork/native-style UI components.
-  - Goal: make the Card Stats filter look and behave like a real Slay the Spire 2 control, not a bolted-on mod widget.
-  - Prefer reusing or duplicating native game controls now that we have more confidence patching UI surfaces.
-  - Preserve all existing sort behavior and reverse-order behavior.
+- Review the new native-shell Card Library Card Stats sort control.
+  - First cleanup pass reuses the game's native `NCardViewSortButton` visual shell with a transparent popup hitbox.
+  - Confirm the closed state now looks native beside `A - Z`.
+  - Confirm dropdown selection and reverse-order behavior still feel understandable.
+  - If it still feels off, refine the open-state menu next rather than rebuilding the closed state again.
 - Review the latest Card Stats sorter placement in-game.
   - It should look like the existing `A - Z` sort row when closed.
   - If the back arrow crowds it, decide whether to move it above `A - Z` or redesign the sort area.

@@ -32,6 +32,7 @@ Neowtwork uses semantic versioning.
 - Aligned the in-run choice card stats overlay size and placement more closely with the Card Library overlay.
 - Run-history analytics now searches the wider Slay the Spire 2 save root when available instead of only the active modded profile folder.
 - Moved the Mod Configuration run analytics view toward a bottom-of-page raw analytics dump, keeping the player-facing dashboard in the Compendium.
+- Reworked the Card Library Card Stats sort control to reuse the game's native sort-button visual shell instead of a hand-styled dropdown rectangle.
 
 ## 0.2.0 - 2026-06-23
 

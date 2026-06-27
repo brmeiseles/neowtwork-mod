@@ -44,6 +44,7 @@ internal static class CardLibraryWinRateSort
 {
     private const string DropdownName = "NeowtworkStatsSortDropdown";
     private const string MenuButtonName = "NeowtworkStatsSortMenuButton";
+    private const string NativeSortButtonName = "NeowtworkStatsNativeSortButton";
     private const float DefaultMenuButtonWidth = 280f;
     private const float MenuButtonVerticalOffset = 43f;
 
@@ -72,18 +73,33 @@ internal static class CardLibraryWinRateSort
         Control? sidebar = alphabetSorter.GetParent() as Control;
         Control menuParent = sidebar ?? alphabetSorter;
 
-        if (menuParent.GetNodeOrNull<MenuButton>(MenuButtonName) != null)
+        if (menuParent.GetNodeOrNull<MenuButton>(MenuButtonName) != null ||
+            menuParent.GetNodeOrNull<NCardViewSortButton>(NativeSortButtonName) != null)
         {
             return;
         }
 
         alphabetSorter.GetNodeOrNull<OptionButton>(DropdownName)?.QueueFree();
-        alphabetSorter.GetNodeOrNull<MenuButton>(MenuButtonName)?.QueueFree();
+        menuParent.GetNodeOrNull<OptionButton>(DropdownName)?.QueueFree();
+        menuParent.GetNodeOrNull<MenuButton>(MenuButtonName)?.QueueFree();
+        menuParent.GetNodeOrNull<NCardViewSortButton>(NativeSortButtonName)?.QueueFree();
+
         float menuButtonWidth = alphabetSorter.Size.X > 0f ? alphabetSorter.Size.X : DefaultMenuButtonWidth;
         float menuButtonHeight = alphabetSorter.Size.Y > 0f ? alphabetSorter.Size.Y : 42f;
         Vector2 controlPosition = sidebar == null
             ? new Vector2(0f, MenuButtonVerticalOffset)
             : alphabetSorter.Position + new Vector2(0f, MenuButtonVerticalOffset);
+
+        NCardViewSortButton visualSortButton = (NCardViewSortButton)alphabetSorter.Duplicate(
+            (int)(Node.DuplicateFlags.Groups | Node.DuplicateFlags.Scripts | Node.DuplicateFlags.UseInstantiation));
+        visualSortButton.Name = NativeSortButtonName;
+        visualSortButton.Position = controlPosition;
+        visualSortButton.Size = new Vector2(menuButtonWidth, menuButtonHeight);
+        visualSortButton.CustomMinimumSize = new Vector2(menuButtonWidth, menuButtonHeight);
+        visualSortButton.FocusMode = Control.FocusModeEnum.None;
+        visualSortButton.MouseFilter = Control.MouseFilterEnum.Ignore;
+        visualSortButton.ZIndex = alphabetSorter.ZIndex + 2;
+        menuParent.AddChild(visualSortButton);
 
         MenuButton menuButton = new()
         {
@@ -92,7 +108,7 @@ internal static class CardLibraryWinRateSort
             Size = new Vector2(menuButtonWidth, menuButtonHeight),
             CustomMinimumSize = new Vector2(menuButtonWidth, menuButtonHeight),
             FocusMode = Control.FocusModeEnum.None,
-            ZIndex = alphabetSorter.ZIndex + 2,
+            ZIndex = alphabetSorter.ZIndex + 3,
             MouseFilter = Control.MouseFilterEnum.Stop,
             MouseDefaultCursorShape = Control.CursorShape.PointingHand
         };
@@ -103,8 +119,9 @@ internal static class CardLibraryWinRateSort
             popup.AddRadioCheckItem(GetMetricLabel(metric), (int)metric);
         }
 
-        StyleDropdown(menuButton);
-        UpdateMenuButtonState(menuButton, grid);
+        StyleTransparentOverlay(menuButton);
+        StyleDropdownPopup(menuButton);
+        UpdateMenuButtonState(menuButton, visualSortButton, grid);
 
         popup.IdPressed += id =>
         {
@@ -117,7 +134,7 @@ internal static class CardLibraryWinRateSort
                 Metric: metric,
                 IsReversed: isSameMetric && !currentState.IsReversed);
 
-            UpdateMenuButtonState(menuButton, grid);
+            UpdateMenuButtonState(menuButton, visualSortButton, grid);
             CacheDefaultOrder(grid);
             DisplayCardsMethod.Invoke(library, null);
         };
@@ -222,12 +239,12 @@ internal static class CardLibraryWinRateSort
         }
     }
 
-    private static void UpdateMenuButtonState(MenuButton menuButton, NCardLibraryGrid grid)
+    private static void UpdateMenuButtonState(MenuButton menuButton, NCardViewSortButton visualSortButton, NCardLibraryGrid grid)
     {
         StatSortState state = GetSortState(grid);
-        menuButton.Text = state.IsActive
-            ? $"{GetMetricLabel(state.Metric)}  {(state.IsReversed ? "↑" : "↓")}"
-            : "Card Stats";
+        visualSortButton.SetLabel(state.IsActive ? GetMetricLabel(state.Metric) : "Card Stats");
+        visualSortButton.IsDescending = !state.IsReversed;
+        menuButton.Text = "";
 
         PopupMenu popup = menuButton.GetPopup();
         for (int index = 0; index < popup.ItemCount; index++)
@@ -236,21 +253,20 @@ internal static class CardLibraryWinRateSort
         }
     }
 
-    private static void StyleDropdown(MenuButton dropdown)
+    private static void StyleTransparentOverlay(MenuButton dropdown)
     {
-        dropdown.Alignment = HorizontalAlignment.Left;
-        dropdown.AddThemeFontSizeOverride("font_size", 26);
-        dropdown.AddThemeColorOverride("font_color", new Color(0.95f, 0.83f, 0.35f));
-        dropdown.AddThemeColorOverride("font_hover_color", new Color(1f, 0.93f, 0.58f));
-        dropdown.AddThemeColorOverride("font_pressed_color", new Color(1f, 0.93f, 0.58f));
-        dropdown.AddThemeColorOverride("font_outline_color", new Color(0.09f, 0.14f, 0.15f));
-        dropdown.AddThemeConstantOverride("outline_size", 4);
-
-        dropdown.AddThemeStyleboxOverride("normal", CreateSortHeaderStyle(new Color(0.12f, 0.38f, 0.39f), 0f));
-        dropdown.AddThemeStyleboxOverride("hover", CreateSortHeaderStyle(new Color(0.15f, 0.45f, 0.47f), 0f));
-        dropdown.AddThemeStyleboxOverride("pressed", CreateSortHeaderStyle(new Color(0.09f, 0.31f, 0.33f), 1f));
+        StyleBoxEmpty empty = new();
+        dropdown.Flat = true;
+        dropdown.Alignment = HorizontalAlignment.Center;
+        dropdown.AddThemeStyleboxOverride("normal", empty);
+        dropdown.AddThemeStyleboxOverride("hover", empty);
+        dropdown.AddThemeStyleboxOverride("pressed", empty);
+        dropdown.AddThemeStyleboxOverride("disabled", empty);
         dropdown.AddThemeStyleboxOverride("focus", new StyleBoxEmpty());
+    }
 
+    private static void StyleDropdownPopup(MenuButton dropdown)
+    {
         PopupMenu popup = dropdown.GetPopup();
         popup.AddThemeFontSizeOverride("font_size", 18);
         popup.AddThemeColorOverride("font_color", new Color(0.96f, 0.93f, 0.80f));
