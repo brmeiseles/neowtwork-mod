@@ -3,7 +3,7 @@
   "name": "Neowtwork",
   "author": "Brandon Meiseles",
   "description": "Card Library analytics and sorting for Slay the Spire 2.",
-  "version": "0.3.1",
+  "version": "0.3.2",
   "min_game_version": "0.107.0",
   "has_pck": true,
   "has_dll": true,

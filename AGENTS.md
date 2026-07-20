@@ -170,6 +170,8 @@ Slay the Spire 2 separates vanilla and modded profile progress. Steam Cloud can 
 
 As of the June/July 2026 public beta updates, the base game copies unmodded saves into the modded save directory on first modded launch. Treat that native behavior as the primary first-run migration path. Neowtwork should not compete with it.
 
+Current public/friend builds should keep Neowtwork progress tools read-only. Neowtwork may read local progress and run-history files for analytics, but should not import, sync, overwrite, or delete save files.
+
 Rules:
 
 - Do not edit save files unless the user explicitly asks or the user confirms an in-game Neowtwork sync/import prompt.
@@ -179,7 +181,7 @@ Rules:
 - Never delete unique save or run-history files during sync unless the user explicitly approves deletion.
 - Prefer read-only parsing of `.run` history files for stats.
 
-The old vanilla-to-modded import flow should be treated as an advanced recovery/manual fallback, not the default path. The future-facing save feature is explicit opt-in local sync:
+The old vanilla-to-modded import flow should be treated as deprecated, not the default path. If save-writing tools are reconsidered later, they must be explicit opt-in local tools:
 
 - explain that the base game handles first-run vanilla-to-modded copying
 - show what would be copied in each direction

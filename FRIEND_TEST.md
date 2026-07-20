@@ -102,17 +102,11 @@ mods/
 2. Confirm the game says it is running modded.
 3. Open `Mod Configuration`.
 4. Select `Neowtwork`.
-5. Click `Import Base Game Progress`.
-6. Confirm the import if you want your vanilla/base-game progress copied into the modded profile.
-7. If the compendium does not update right away, fully quit and relaunch Slay the Spire 2, then check again.
-8. Open the compendium/card library.
-9. Enable `View Stats`.
-10. Check a few cards.
-11. Try the `Card Stats` sorting dropdown.
-
-Neowtwork may also ask `Import base-game data?` automatically on launch. That prompt is optional; the Mod Configuration button is the reliable manual path.
-
-If you choose `Import` and the compendium does not update right away, fully quit and relaunch Slay the Spire 2, then check again.
+5. Confirm the progress section says Neowtwork is read-only and does not import or sync save files.
+6. Open the compendium/card library.
+7. Enable `View Stats`.
+8. Check a few cards.
+9. Try the `Card Stats` sorting dropdown.
 
 ## What to report back
 
@@ -121,39 +115,43 @@ Please send:
 - Did the game launch?
 - Did BaseLib load?
 - Did Neowtwork load?
-- Did Neowtwork ask to import base-game data?
 - Did `Mod Configuration` show a `Neowtwork` page?
-- Did `Import Base Game Progress` appear?
-- If you chose Import, did it show `Import complete`?
-- If you chose Import, did your compendium/progress appear afterward, either immediately or after relaunch?
+- Did the progress section say Neowtwork is read-only?
 - Did the compendium open?
 - Did the extra card stats show?
 - Did the `Card Stats` sorting dropdown work?
 - Did anything crash or look broken?
-- Screenshot if possible, especially of the import prompt, import result, and Card Library.
+- Screenshot if possible, especially of Mod Configuration and Card Library.
 
 ## Important note about progress
 
 Slay the Spire 2 separates vanilla and modded profile progress.
 
-If your modded profile looks empty or the compendium is locked, your vanilla progress is probably still safe; the game is just using a separate modded save lane.
+Current Slay the Spire 2 public beta builds copy base-game progress into the modded save lane on first modded launch.
 
-Neowtwork can import base-game data from `Mod Configuration` → `Neowtwork` → `Import Base Game Progress`. This copies your vanilla profile into the matching modded profile after creating a backup.
+Neowtwork does not import, sync, overwrite, or delete save files. It only reads local progress/run history for analytics.
 
-- You may not see the automatic import prompt if your modded profile already has progress, or if your vanilla profile does not appear to have meaningful progress yet. That is okay; use the manual Mod Configuration button instead.
-- Choosing `Import` creates a backup first, then copies vanilla progress and run history into modded.
-- Choosing `Not Now` does not change save files.
-- Neowtwork does not copy modded data back into vanilla.
+- If your modded profile looks empty or the compendium is locked, your vanilla progress is probably still safe; the game is just using a separate modded save lane.
+- Try launching the unmodded game once, fully quitting, then launching modded again.
 - Neowtwork does not control Steam Cloud.
 
-Do not manually copy or edit save files unless Brandon explicitly asks you to. Use the in-game import button first.
+Do not manually copy or edit save files unless Brandon explicitly asks you to.
+
+## Cross-machine progress check
+
+If you play on more than one computer, please test whether Slay the Spire 2/Steam syncs modded progress between machines:
+
+1. Finish or view a known modded run on one computer.
+2. Let Steam Cloud finish syncing.
+3. Launch Slay the Spire 2 modded on the other computer.
+4. Check whether that modded run appears in Run History and Neowtwork analytics.
+
+If it does not appear, report that back. Neowtwork will not try to repair cross-machine sync automatically.
 
 ## Steam Cloud warning
 
 Steam Cloud can complicate modded-profile testing.
 
-- Neowtwork imports local vanilla data into the local modded profile.
 - Neowtwork does not resolve Steam Cloud conflicts.
 - Do not choose random cloud conflict options just to make progress appear.
-- If Steam shows a Cloud Conflict dialog after an intentional import, the local save is usually the one you want to keep.
 - If unsure, pause and ask Brandon before choosing.

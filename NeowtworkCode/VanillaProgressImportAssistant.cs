@@ -19,19 +19,31 @@ internal static class VanillaProgressImportAssistant
 
     public static void TryOfferImport(Sts2Logger logger)
     {
+        logger.Info("Skipping vanilla progress import prompt: Neowtwork progress tools are read-only.");
+    }
+
+    public static string GetReadOnlyProgressStatusText()
+    {
         try
         {
-            if (Engine.GetMainLoop() is not SceneTree sceneTree)
-            {
-                logger.Info("Skipping vanilla progress import prompt: Godot scene tree is not available.");
-                return;
-            }
+            ImportScan importScan = ScanImportCandidates();
+            SyncPlan syncPlan = BuildSyncPlan();
 
-            TryCreateDialog(sceneTree, logger);
+            return "[b]Progress[/b]\n\n" +
+                   "Slay the Spire 2 now handles first-time base-game progress setup for modded profiles.\n" +
+                   "Neowtwork does not import, sync, overwrite, or delete save files.\n\n" +
+                   $"Save root:\n{importScan.SaveRootPath}\n\n" +
+                   $"Steam save folders found: {importScan.SteamUsers.Count}\n" +
+                   $"Vanilla profiles found: {importScan.VanillaProfileCount}\n" +
+                   $"Vanilla/modded profile pairs found: {syncPlan.Pairs.Count}\n\n" +
+                   "Analytics remain read-only and use whatever run history exists locally on this machine.\n" +
+                   "If progress is missing on another computer, confirm Steam Cloud and Slay the Spire 2 are syncing that modded data.";
         }
         catch (Exception exception)
         {
-            logger.Error($"Failed while scheduling vanilla progress import prompt: {exception}");
+            return "[b]Progress[/b]\n\n" +
+                   "Neowtwork progress tools are read-only.\n\n" +
+                   $"Could not read local save status.\n\n{exception.Message}";
         }
     }
 
@@ -75,46 +87,12 @@ internal static class VanillaProgressImportAssistant
 
     public static void ShowManualImportDialog(Sts2Logger logger)
     {
-        try
-        {
-            if (Engine.GetMainLoop() is not SceneTree sceneTree)
-            {
-                logger.Info("Skipping manual vanilla progress import dialog: Godot scene tree is not available.");
-                return;
-            }
-
-            ImportScan scan = ScanImportCandidates(logger);
-            ImportCandidate? candidate = SelectBestCandidate(scan, ImportMode.Manual);
-            if (candidate == null)
-            {
-                ShowNoCandidateDialog(sceneTree, scan);
-                return;
-            }
-
-            ShowImportConfirmationDialog(sceneTree, candidate, logger, ImportMode.Manual);
-        }
-        catch (Exception exception)
-        {
-            logger.Error($"Failed while creating manual vanilla progress import dialog: {exception}");
-        }
+        logger.Info("Manual vanilla progress import is disabled: Neowtwork progress tools are read-only.");
     }
 
     public static void TryAutoSync(Sts2Logger logger)
     {
-        if (!NeowtworkConfig.KeepBaseGameAndModdedProgressInSync)
-        {
-            return;
-        }
-
-        try
-        {
-            SyncResult result = SyncAllProfiles(logger);
-            logger.Info($"Auto progress sync complete: {result.SummaryForLog()}");
-        }
-        catch (Exception exception)
-        {
-            logger.Error($"Auto progress sync failed: {exception}");
-        }
+        logger.Info("Auto progress sync is disabled: Neowtwork progress tools are read-only.");
     }
 
     public static string GetSyncStatusText()
@@ -145,48 +123,7 @@ internal static class VanillaProgressImportAssistant
 
     public static void ShowManualSyncDialog(Sts2Logger logger)
     {
-        try
-        {
-            if (Engine.GetMainLoop() is not SceneTree sceneTree)
-            {
-                logger.Info("Skipping manual progress sync dialog: Godot scene tree is not available.");
-                return;
-            }
-
-            SyncPlan plan = BuildSyncPlan();
-            if (plan.Pairs.Count == 0)
-            {
-                ShowNoSyncCandidateDialog(sceneTree);
-                return;
-            }
-
-            ConfirmationDialog dialog = new()
-            {
-                Name = "NeowtworkProgressSyncDialog",
-                Title = "Sync base-game and modded progress?",
-                DialogText = BuildSyncConfirmationText(plan),
-                OkButtonText = "Sync",
-                CancelButtonText = "Cancel",
-                DialogAutowrap = true,
-                DialogCloseOnEscape = true,
-                MinSize = new Vector2I(860, 560)
-            };
-
-            dialog.Confirmed += () =>
-            {
-                SyncResult result = SyncAllProfiles(logger);
-                ShowSyncResultDialog(sceneTree, result);
-                dialog.QueueFree();
-            };
-
-            dialog.Canceled += dialog.QueueFree;
-            sceneTree.Root.AddChild(dialog);
-            dialog.PopupCentered(new Vector2I(900, 580));
-        }
-        catch (Exception exception)
-        {
-            logger.Error($"Failed while creating progress sync dialog: {exception}");
-        }
+        logger.Info("Manual progress sync is disabled: Neowtwork progress tools are read-only.");
     }
 
     private static void TryCreateDialog(SceneTree sceneTree, Sts2Logger logger)

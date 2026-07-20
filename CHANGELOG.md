@@ -6,6 +6,15 @@ Neowtwork uses semantic versioning.
 
 ## Unreleased
 
+## 0.3.2 - 2026-07-20
+
+### Changed
+
+- Made Neowtwork progress tools read-only for public/friend testing.
+- Removed Neowtwork's launch-time vanilla progress import prompt and automatic progress sync.
+- Removed manual progress import/sync controls from Mod Configuration.
+- Updated the Mod Configuration progress section to explain that Slay the Spire 2 handles first-time modded progress setup and that Neowtwork does not write save files.
+
 ## 0.3.1 - 2026-07-20
 
 ### Changed

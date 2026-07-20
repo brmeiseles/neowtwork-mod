@@ -12,6 +12,7 @@ Keep the spirit of the game alive: small, readable, native-feeling improvements 
 - Prefer built-in game stats when available.
 - Use run-history parsing for richer stats only when built-in progress data is not enough.
 - Avoid save-file writes unless the user explicitly approves a careful migration/sync feature.
+- Current public/friend builds should keep Neowtwork progress tools read-only and trust Slay the Spire 2's native first-run modded progress setup.
 
 ## Latest public beta compatibility
 
@@ -170,6 +171,11 @@ Keep the spirit of the game alive: small, readable, native-feeling improvements 
 
 ## Save and progress sync
 
+- Keep public/friend builds read-only for progress.
+  - Neowtwork should not import, sync, overwrite, or delete save files.
+  - Trust Slay the Spire 2's native first-run vanilla-to-modded copy.
+  - Validate cross-machine behavior by checking whether Steam/Slay the Spire 2 syncs modded runs from one computer to another.
+  - If cross-machine modded progress still does not sync, document the limitation before building any Neowtwork file-writing tool.
 - Deprecate Neowtwork's first-run vanilla-to-modded import as the main path.
   - Mega Crit now copies unmodded saves into the modded save directory on first modded launch.
   - Reframe Neowtwork's import UI as advanced recovery/manual fallback only.
