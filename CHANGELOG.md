@@ -6,6 +6,13 @@ Neowtwork uses semantic versioning.
 
 ## Unreleased
 
+## 0.3.1 - 2026-07-20
+
+### Changed
+
+- Updated Neowtwork's BaseLib dependency requirement to `3.3.6` for the latest Slay the Spire 2 public beta compatibility pass.
+- Updated the local development BaseLib install from `v3.3.2` to `v3.3.6`.
+
 ## 0.3.0 - 2026-06-26
 
 ### Added
