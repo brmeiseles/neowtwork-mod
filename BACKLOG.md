@@ -6,10 +6,42 @@ Keep the spirit of the game alive: small, readable, native-feeling improvements 
 
 ## Current focus
 
+- Restore compatibility with the latest Slay the Spire 2 public beta and latest BaseLib.
+- Prepare Neowtwork for friend testing and eventual Workshop publishing.
 - Card Library analytics should feel like a feature Mega Crit could have shipped.
 - Prefer built-in game stats when available.
 - Use run-history parsing for richer stats only when built-in progress data is not enough.
 - Avoid save-file writes unless the user explicitly approves a careful migration/sync feature.
+
+## Latest public beta compatibility
+
+- Update BaseLib.
+  - Current reports indicate BaseLib is failing after recent Mega Crit updates.
+  - Update NuGet/package dependency and installed local/Steam dependency as needed.
+  - Rebuild after updating and confirm the mod loads.
+- Review Mega Crit modding changes from June/July 2026 for Neowtwork impact.
+  - First modded launch now copies unmodded saves to the modded save directory.
+  - Non-gameplay-affecting mods are excluded from serialization/hash behavior more correctly.
+  - Non-gameplay mod mismatch warnings log correct mod lists.
+  - Steam Workshop mods can take precedence over local mods when the Workshop version is greater.
+  - XML documentation for `STS2.dll` is beginning to ship.
+- Run a full latest-beta smoke test:
+  - modded launch
+  - BaseLib loads
+  - Mod Configuration opens
+  - progress sync/status panel opens without errors
+  - Card Library stats overlay renders
+  - Card Stats sorting works in both directions
+  - in-run reward card stats work
+  - shop card stats work
+  - event option hover stats work
+  - relic hover stats work
+  - Compendium dashboard opens
+  - multiplayer with matching mod lists does not produce a false mismatch
+- Inspect the latest game logs after smoke testing.
+  - Look specifically for Neowtwork Harmony patch failures, missing node names, save sync errors, and BaseLib errors.
+- Update `min_game_version` if the current mod no longer supports older public beta builds.
+- Prefer published `STS2.dll` XML documentation over decompiled code when investigating new APIs.
 
 ## Near-term UX polish
 
@@ -138,44 +170,48 @@ Keep the spirit of the game alive: small, readable, native-feeling improvements 
 
 ## Save and progress sync
 
-- Build an explicit two-way progress sync option.
-  - Working name: `Keep Base Game and Modded Progress in Sync`.
-  - User goal: vanilla and modded profile/run-history files stay in lockstep after opting in.
+- Deprecate Neowtwork's first-run vanilla-to-modded import as the main path.
+  - Mega Crit now copies unmodded saves into the modded save directory on first modded launch.
+  - Reframe Neowtwork's import UI as advanced recovery/manual fallback only.
+  - Rename/reword `Progress Import` toward `Progress Sync` or `Save Tools`.
+  - Remove or suppress automatic first-run import prompts if the base game now handles the scenario safely.
+  - Keep a manual recovery button only if it remains useful after latest-beta testing.
+- Rework the current opt-in sync feature around the new base-game behavior.
+  - Purpose: prevent ongoing drift after first launch, not replace Mega Crit's initial copy.
   - Sync must handle either side as the newest source:
-    - vanilla → modded when vanilla has newer data
-    - modded → vanilla when modded has newer data
-  - It must keep run history, character progress, compendium unlock/progress, and profile stats aligned where safe.
-  - It must ask for confirmation before first enabling sync.
-  - It must create timestamped backups before every write.
-  - It must never silently delete unique runs from either side.
-  - It must explain Steam Cloud limits clearly: Neowtwork can copy local files, but Steam Cloud may still need user attention if conflicts appear.
-  - Consider a status panel showing:
+    - vanilla → modded when vanilla has newer local data
+    - modded → vanilla when modded has newer local data
+  - Show a preview/status before manual sync:
     - files only in vanilla
     - files only in modded
     - files newer in vanilla
     - files newer in modded
+    - conflicts skipped
     - last sync time
-  - Treat this as a high-safety feature; do not implement casually during unrelated UI work.
-- Test and polish the Mod Configuration vanilla-to-modded progress import flow.
-  - Must ask before copying anything.
-  - Must explain what will happen.
-  - Must create timestamped backups first.
-  - Must never silently overwrite user progress.
-- Verify the manual import path with friends on Windows.
-  - It should avoid manual AppData copying.
-  - It should work even when the automatic first-run prompt does not appear.
-  - It should explain Steam Cloud limits clearly.
-- Current first pass detects likely sync states:
-  - vanilla has progress, modded is empty
-  - both have progress
-  - modded has newer progress
-  - missing or unreadable save folders
-- Decide whether a helper script is also needed for users who cannot use the in-game prompt.
-- Document manual sync steps for friends only after the safe flow is understood.
+  - Ask for confirmation before enabling automatic sync.
+  - Create timestamped backups before every write.
+  - Never silently delete unique runs or profile files from either side.
+  - Skip ambiguous conflicts instead of guessing.
+  - Explain Steam Cloud limits clearly: Neowtwork can copy local files, but Steam may still present cloud conflicts.
+- Audit the existing sync implementation for release readiness.
+  - Confirm it excludes `_neowtwork`, backup, temp, and cloud/system files.
+  - Confirm it does not copy active lock/temp files.
+  - Confirm same-content files are detected by hash.
+  - Confirm copied file timestamps are preserved.
+  - Confirm backups are easy to find and not included in analytics scans.
+  - Confirm auto-sync does not run while a save write is in progress.
+- Decide whether a helper script is still needed.
+  - It may be unnecessary now that the base game handles first-run copy.
+  - Keep manual friend instructions only as a fallback.
 
 ## Friend testing
 
 - Keep `FRIEND_TEST.md` current with the actual UI.
+- Update friend-test instructions for latest public beta behavior.
+  - Base game should copy vanilla progress to modded on first modded launch.
+  - BaseLib must be updated before testing Neowtwork.
+  - Manual save copying should be last-resort only.
+  - Include how to verify whether Steam Workshop or local Neowtwork is being loaded.
 - Fix the manual friend-test zip/package flow.
   - Package must include the exact current build and install instructions.
   - Confirm the zip works for both Mac and Windows users.
@@ -192,6 +228,15 @@ Keep the spirit of the game alive: small, readable, native-feeling improvements 
 
 ## Packaging and release
 
+- Prepare a latest-beta release candidate after BaseLib compatibility is restored.
+  - Bump version only after compatibility and smoke test pass.
+  - Verify `affects_gameplay` remains `false`.
+  - Verify no gameplay models/content are registered by Neowtwork.
+  - Verify friend-test package and Workshop package contain the same intended version.
+- Define local-vs-Workshop development workflow.
+  - Steam Workshop mods can take precedence over local mods when Workshop version is greater.
+  - During development, confirm whether local or Workshop Neowtwork is loaded.
+  - Consider using explicit dev/pre-release versions for local testing.
 - Maintain manual zip packaging for early testers.
 - Keep release zips limited to:
   - `Neowtwork/Neowtwork.dll`
@@ -200,6 +245,7 @@ Keep the spirit of the game alive: small, readable, native-feeling improvements 
   - `INSTALL.txt`
 - Do not package logs, saves, backups, `.godot`, or local machine paths.
 - Prepare Steam Workshop release only after:
+  - latest public beta compatibility passes
   - BaseLib dependency/install story is clear
   - save/progress behavior is documented
   - friend testing has passed on at least Mac and Windows

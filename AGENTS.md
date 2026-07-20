@@ -91,6 +91,31 @@ Use UX review mode for visual and interaction polish.
 
 The local project has been configured to build and copy the mod into the local Slay the Spire 2 mods folder.
 
+## Game and modding compatibility
+
+Slay the Spire 2 is in active public beta. Mega Crit modding behavior can change substantially between builds.
+
+Before release or after a game update:
+
+- Review recent game/modding patch notes for save, hash, serialization, Workshop, multiplayer, and mod menu changes.
+- Update BaseLib before diagnosing deeper Neowtwork breakage if BaseLib is failing to load.
+- Prefer published `STS2.dll` XML documentation when available before falling back to decompiled snippets.
+- Rebuild against the current public beta and smoke-test every Harmony-patched UI surface.
+- Keep `affects_gameplay` set to `false` unless the user explicitly asks for gameplay-affecting features and we intentionally accept multiplayer/hash consequences.
+- Do not register cards, relics, powers, saved properties, or gameplay models unless the project scope changes. Neowtwork should remain a UI/statistics mod.
+
+Known high-risk compatibility surfaces:
+
+- Card Library sort controls and stats overlays
+- in-run reward/shop/event card stat overlays
+- Compendium dashboard navigation
+- Mod Configuration custom controls
+- event-option hover tips
+- relic hover tips
+- save/profile sync paths
+
+Steam Workshop/local precedence matters: Steam mods can take precedence over local mods when the Steam version is greater. During local development, confirm the intended local build is the one loaded. If needed, unsubscribe from the Workshop build, disable it, or bump the local dev version appropriately.
+
 ## Build and package
 
 From the repo root:
@@ -143,15 +168,25 @@ Be very careful with save files.
 
 Slay the Spire 2 separates vanilla and modded profile progress. Steam Cloud can overwrite local modded progress.
 
+As of the June/July 2026 public beta updates, the base game copies unmodded saves into the modded save directory on first modded launch. Treat that native behavior as the primary first-run migration path. Neowtwork should not compete with it.
+
 Rules:
 
-- Do not edit save files unless the user explicitly asks or the user confirms the in-game vanilla-to-modded import prompt.
+- Do not edit save files unless the user explicitly asks or the user confirms an in-game Neowtwork sync/import prompt.
 - Do not touch Steam Cloud data unless the user explicitly asks.
-- Treat vanilla saves as source-of-truth if syncing is requested.
+- Do not assume vanilla is always source-of-truth. For ongoing opt-in sync, either vanilla or modded may contain the newest local data.
 - Always make timestamped backups before copying save files.
+- Never delete unique save or run-history files during sync unless the user explicitly approves deletion.
 - Prefer read-only parsing of `.run` history files for stats.
 
-The mod should only write save files through the approved vanilla-to-modded import flow. That flow must ask first, back up first, never write vanilla data, and never touch Steam Cloud directly.
+The old vanilla-to-modded import flow should be treated as an advanced recovery/manual fallback, not the default path. The future-facing save feature is explicit opt-in local sync:
+
+- explain that the base game handles first-run vanilla-to-modded copying
+- show what would be copied in each direction
+- back up both sides before writing
+- copy missing/newer files both directions when safe
+- skip ambiguous conflicts instead of guessing
+- never control Steam Cloud directly
 
 ## Stats architecture
 
