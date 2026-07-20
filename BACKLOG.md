@@ -195,6 +195,9 @@ Keep the spirit of the game alive: small, readable, native-feeling improvements 
   - Explain Steam Cloud limits clearly: Neowtwork can copy local files, but Steam may still present cloud conflicts.
 - Audit the existing sync implementation for release readiness.
   - Confirm it excludes `_neowtwork`, backup, temp, and cloud/system files.
+  - Investigate latest-beta smoke-test errors where the game attempted to delete `modded/profile2/saves/*.save.backup` files and failed.
+    - Determine whether these are game-created backups, old Neowtwork leftovers, or sync-created artifacts.
+    - Ensure Neowtwork never leaves backup files directly inside active `saves` folders.
   - Confirm it does not copy active lock/temp files.
   - Confirm same-content files are detected by hash.
   - Confirm copied file timestamps are preserved.
