@@ -237,6 +237,22 @@ Keep the spirit of the game alive: small, readable, native-feeling improvements 
 
 ## Packaging and release
 
+- Workshop upload lane.
+  - Install or locate Mega Crit's official `ModUploader`.
+  - Confirm `ModUploader` can run locally.
+  - Refresh Workshop content from the latest local build:
+    - `workshop/neowtwork/content/Neowtwork/Neowtwork.dll`
+    - `workshop/neowtwork/content/Neowtwork/Neowtwork.json`
+    - `workshop/neowtwork/content/Neowtwork/Neowtwork.pck`
+  - Confirm `workshop/neowtwork/workshop.json` is still private.
+  - Confirm BaseLib dependency remains `3737335127`.
+  - Upload private Workshop item with `ModUploader upload -w workshop/neowtwork`.
+  - Subscribe to the private Workshop item.
+  - Temporarily move/disable local Neowtwork so the Workshop version is the one being tested.
+  - Launch through Steam and confirm Workshop-loaded Neowtwork works.
+  - Check logs for BaseLib/Neowtwork load errors and confirm no save import/sync messages.
+  - Validate same-mod-list multiplayer before public release.
+  - Switch Workshop visibility to public only after private and multiplayer validation pass.
 - Private Workshop candidate is the current release path.
   - Keep initial Workshop visibility private.
   - Validate Workshop-loaded Neowtwork before switching public.
