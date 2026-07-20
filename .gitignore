@@ -6,6 +6,8 @@ bin/
 .vs/
 publish/
 dist/
+workshop/*/content/
+workshop/*/previews/
 Properties/
 packages/
 .editorconfig

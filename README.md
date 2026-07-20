@@ -52,12 +52,12 @@ Neowtwork does not import, sync, overwrite, or delete save files. It does not co
 
 ## Development status
 
-This is a first-pass local development prototype. It is not ready for Steam Workshop publication yet.
+This is an early public-beta mod and is being prepared for a private Steam Workshop test release.
 
 Planned next areas:
 
 - More card history stats from `.run` files
 - Relic stats from run history
 - Better UI polish for the stat sort controls
-- Friend/manual test packaging
-- Steam Workshop packaging later
+- Workshop private upload validation
+- Multiplayer Workshop validation

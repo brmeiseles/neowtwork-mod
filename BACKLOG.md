@@ -7,7 +7,7 @@ Keep the spirit of the game alive: small, readable, native-feeling improvements 
 ## Current focus
 
 - Restore compatibility with the latest Slay the Spire 2 public beta and latest BaseLib.
-- Prepare Neowtwork for friend testing and eventual Workshop publishing.
+- Prepare Neowtwork for private Workshop upload and validation.
 - Card Library analytics should feel like a feature Mega Crit could have shipped.
 - Prefer built-in game stats when available.
 - Use run-history parsing for richer stats only when built-in progress data is not enough.
@@ -237,6 +237,10 @@ Keep the spirit of the game alive: small, readable, native-feeling improvements 
 
 ## Packaging and release
 
+- Private Workshop candidate is the current release path.
+  - Keep initial Workshop visibility private.
+  - Validate Workshop-loaded Neowtwork before switching public.
+  - Use `WORKSHOP_RELEASE.md` as the release checklist.
 - Prepare a latest-beta release candidate after BaseLib compatibility is restored.
   - Bump version only after compatibility and smoke test pass.
   - Verify `affects_gameplay` remains `false`.
