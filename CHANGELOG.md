@@ -6,6 +6,12 @@ Neowtwork uses semantic versioning.
 
 ## Unreleased
 
+### Changed
+
+- Reworked the Compendium dashboard from a single text dump into dashboard cards, section panels, and simple bar-chart rows.
+- Improved dashboard display names so character/card/relic IDs are easier to read.
+- Tightened “best of” analytics to exclude starter cards, Ascender's Bane, and observed character starter relics.
+
 ## 0.3.2 - 2026-07-20
 
 ### Changed

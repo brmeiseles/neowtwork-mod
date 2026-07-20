@@ -15,7 +15,7 @@ internal partial class NeowtworkAnalyticsScreen : NSubmenu
 
     private Button? backButton;
     private Label? titleLabel;
-    private Label? bodyLabel;
+    private VBoxContainer? bodyContainer;
     private OptionButton? characterFilter;
     private OptionButton? ascensionFilter;
     private OptionButton? playerModeFilter;
@@ -110,15 +110,14 @@ internal partial class NeowtworkAnalyticsScreen : NSubmenu
         };
         AddChild(scroll);
 
-        bodyLabel = new Label
+        bodyContainer = new VBoxContainer
         {
             Name = "Body",
-            AutowrapMode = TextServer.AutowrapMode.WordSmart,
             SizeFlagsHorizontal = SizeFlags.ExpandFill,
             SizeFlagsVertical = SizeFlags.ExpandFill
         };
-        bodyLabel.AddThemeFontSizeOverride("font_size", 24);
-        scroll.AddChild(bodyLabel);
+        bodyContainer.AddThemeConstantOverride("separation", 18);
+        scroll.AddChild(bodyContainer);
 
         PopulateFilters();
         RefreshTabs();
@@ -205,9 +204,15 @@ internal partial class NeowtworkAnalyticsScreen : NSubmenu
 
     private void RefreshBody()
     {
-        if (bodyLabel is null)
+        if (bodyContainer is null)
         {
             return;
+        }
+
+        foreach (Node child in bodyContainer.GetChildren())
+        {
+            bodyContainer.RemoveChild(child);
+            child.QueueFree();
         }
 
         string? character = null;
@@ -241,7 +246,168 @@ internal partial class NeowtworkAnalyticsScreen : NSubmenu
         };
 
         RunHistoryAnalytics.DashboardFilter filter = new(character, ascension, playerMode, result);
-        bodyLabel.Text = RunHistoryAnalytics.BuildDashboardText(selectedTab, filter);
+        RunHistoryAnalytics.DashboardModel model = RunHistoryAnalytics.BuildDashboardModel(selectedTab, filter);
+        BuildDashboard(model);
+    }
+
+    private void BuildDashboard(RunHistoryAnalytics.DashboardModel model)
+    {
+        if (bodyContainer is null)
+        {
+            return;
+        }
+
+        Label heading = CreateLabel(model.Title, 30, new Color(1f, 0.9f, 0.5f));
+        heading.CustomMinimumSize = new Vector2(0f, 38f);
+        bodyContainer.AddChild(heading);
+
+        HBoxContainer cards = new()
+        {
+            SizeFlagsHorizontal = SizeFlags.ExpandFill,
+            CustomMinimumSize = new Vector2(0f, 100f)
+        };
+        cards.AddThemeConstantOverride("separation", 14);
+        bodyContainer.AddChild(cards);
+
+        foreach (RunHistoryAnalytics.DashboardCard card in model.Cards)
+        {
+            cards.AddChild(CreateMetricCard(card));
+        }
+
+        foreach (RunHistoryAnalytics.DashboardSection section in model.Sections)
+        {
+            bodyContainer.AddChild(CreateSection(section));
+        }
+    }
+
+    private static Control CreateMetricCard(RunHistoryAnalytics.DashboardCard card)
+    {
+        PanelContainer panel = CreatePanel(new Color(0.05f, 0.11f, 0.12f, 0.88f));
+        panel.CustomMinimumSize = new Vector2(310f, 96f);
+        panel.SizeFlagsHorizontal = SizeFlags.ExpandFill;
+
+        VBoxContainer box = new();
+        box.AddThemeConstantOverride("separation", 3);
+        panel.AddChild(box);
+
+        box.AddChild(CreateLabel(card.Label, 18, new Color(0.95f, 0.78f, 0.28f)));
+        box.AddChild(CreateLabel(card.Value, 26, Colors.White));
+        box.AddChild(CreateLabel(card.Detail, 15, new Color(0.74f, 0.77f, 0.77f)));
+        return panel;
+    }
+
+    private static Control CreateSection(RunHistoryAnalytics.DashboardSection section)
+    {
+        PanelContainer panel = CreatePanel(new Color(0.02f, 0.03f, 0.035f, 0.76f));
+        panel.SizeFlagsHorizontal = SizeFlags.ExpandFill;
+
+        VBoxContainer box = new();
+        box.AddThemeConstantOverride("separation", 8);
+        panel.AddChild(box);
+
+        box.AddChild(CreateLabel(section.Title, 25, new Color(1f, 0.9f, 0.5f)));
+        if (!string.IsNullOrWhiteSpace(section.Subtitle))
+        {
+            Label subtitle = CreateLabel(section.Subtitle, 16, new Color(0.72f, 0.76f, 0.76f));
+            subtitle.AutowrapMode = TextServer.AutowrapMode.WordSmart;
+            box.AddChild(subtitle);
+        }
+
+        if (section.Rows.Count == 0)
+        {
+            box.AddChild(CreateLabel("Not enough data yet.", 20, new Color(0.75f, 0.75f, 0.72f)));
+            return panel;
+        }
+
+        foreach (RunHistoryAnalytics.DashboardRow row in section.Rows)
+        {
+            box.AddChild(CreateDashboardRow(row));
+        }
+
+        return panel;
+    }
+
+    private static Control CreateDashboardRow(RunHistoryAnalytics.DashboardRow row)
+    {
+        VBoxContainer outer = new()
+        {
+            SizeFlagsHorizontal = SizeFlags.ExpandFill,
+            CustomMinimumSize = new Vector2(0f, row.ChartValue.HasValue ? 56f : 42f)
+        };
+        outer.AddThemeConstantOverride("separation", 3);
+
+        HBoxContainer line = new()
+        {
+            SizeFlagsHorizontal = SizeFlags.ExpandFill
+        };
+        outer.AddChild(line);
+
+        Label label = CreateLabel(row.Label, 19, Colors.White);
+        label.SizeFlagsHorizontal = SizeFlags.ExpandFill;
+        label.AutowrapMode = TextServer.AutowrapMode.WordSmart;
+        line.AddChild(label);
+
+        Label value = CreateLabel(row.Value, 19, new Color(1f, 0.9f, 0.5f));
+        value.HorizontalAlignment = HorizontalAlignment.Right;
+        value.CustomMinimumSize = new Vector2(220f, 0f);
+        line.AddChild(value);
+
+        Label detail = CreateLabel(row.Detail, 14, new Color(0.72f, 0.76f, 0.76f));
+        detail.AutowrapMode = TextServer.AutowrapMode.WordSmart;
+        outer.AddChild(detail);
+
+        if (row.ChartValue.HasValue)
+        {
+            ProgressBar bar = new()
+            {
+                MinValue = 0d,
+                MaxValue = 1d,
+                Value = Math.Clamp(row.ChartValue.Value, 0d, 1d),
+                ShowPercentage = false,
+                CustomMinimumSize = new Vector2(0f, 9f),
+                SizeFlagsHorizontal = SizeFlags.ExpandFill,
+                MouseFilter = MouseFilterEnum.Ignore
+            };
+            outer.AddChild(bar);
+        }
+
+        return outer;
+    }
+
+    private static Label CreateLabel(string text, int fontSize, Color color)
+    {
+        Label label = new()
+        {
+            Text = text,
+            MouseFilter = MouseFilterEnum.Ignore
+        };
+        label.AddThemeFontSizeOverride("font_size", fontSize);
+        label.AddThemeColorOverride("font_color", color);
+        return label;
+    }
+
+    private static PanelContainer CreatePanel(Color background)
+    {
+        PanelContainer panel = new();
+        StyleBoxFlat style = new()
+        {
+            BgColor = background,
+            BorderColor = new Color(0.1f, 0.44f, 0.48f, 0.85f),
+            BorderWidthLeft = 2,
+            BorderWidthTop = 2,
+            BorderWidthRight = 2,
+            BorderWidthBottom = 2,
+            CornerRadiusTopLeft = 8,
+            CornerRadiusTopRight = 8,
+            CornerRadiusBottomLeft = 8,
+            CornerRadiusBottomRight = 8,
+            ContentMarginLeft = 14f,
+            ContentMarginTop = 12f,
+            ContentMarginRight = 14f,
+            ContentMarginBottom = 12f
+        };
+        panel.AddThemeStyleboxOverride("panel", style);
+        return panel;
     }
 
     private static void SetSelectedSafely(OptionButton? button, int selected)
@@ -272,8 +438,6 @@ internal partial class NeowtworkAnalyticsScreen : NSubmenu
 
     private static string PrettyId(string id)
     {
-        return string.IsNullOrWhiteSpace(id)
-            ? "Unknown"
-            : id.Split('/')[^1].Replace("_", " ", StringComparison.Ordinal).Replace("-", " ", StringComparison.Ordinal);
+        return RunHistoryAnalytics.PrettyName(id);
     }
 }

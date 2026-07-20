@@ -12,6 +12,37 @@ namespace Neowtwork.NeowtworkCode;
 internal static class RunHistoryAnalytics
 {
     private static RunHistoryIndex? CachedIndex;
+    private static readonly HashSet<string> StarterCardIds = new(StringComparer.Ordinal)
+    {
+        "CARD.ASCENDERS_BANE",
+        "CARD.BASH",
+        "CARD.BODYGUARD",
+        "CARD.DEFEND_DEFECT",
+        "CARD.DEFEND_IRONCLAD",
+        "CARD.DEFEND_NECROBINDER",
+        "CARD.DEFEND_REGENT",
+        "CARD.DEFEND_SILENT",
+        "CARD.DUALCAST",
+        "CARD.FALLING_STAR",
+        "CARD.NEUTRALIZE",
+        "CARD.STRIKE_DEFECT",
+        "CARD.STRIKE_IRONCLAD",
+        "CARD.STRIKE_NECROBINDER",
+        "CARD.STRIKE_REGENT",
+        "CARD.STRIKE_SILENT",
+        "CARD.SURVIVOR",
+        "CARD.UNLEASH",
+        "CARD.VENERATE",
+        "CARD.ZAP"
+    };
+    private static readonly HashSet<string> StarterRelicIds = new(StringComparer.Ordinal)
+    {
+        "RELIC.BOUND_PHYLACTERY",
+        "RELIC.BURNING_BLOOD",
+        "RELIC.CRACKED_CORE",
+        "RELIC.DIVINE_RIGHT",
+        "RELIC.RING_OF_THE_SNAKE"
+    };
 
     public enum DashboardTab
     {
@@ -156,6 +187,36 @@ internal static class RunHistoryAnalytics
         return builder.ToString().TrimEnd();
     }
 
+    public static DashboardModel BuildDashboardModel(DashboardTab tab, DashboardFilter filter)
+    {
+        RunHistoryIndex index = GetIndex();
+        List<RunRecord> runs = index.Runs.Where(filter.Matches).ToList();
+        int wins = runs.Count(run => run.Won);
+        int losses = runs.Count(run => run.CountedAsLoss);
+        int abandoned = runs.Count(run => run.Abandoned);
+
+        List<DashboardCard> cards =
+        [
+            new("Runs", runs.Count.ToString(), $"{wins} wins · {losses} losses · {abandoned} abandoned"),
+            new("Win Rate", FormatPercent(Rate(wins, losses)), "wins / completed runs"),
+            new("Filters", FilterPill(filter), BuildFilterSummary(filter))
+        ];
+
+        List<DashboardSection> sections = tab switch
+        {
+            DashboardTab.Cards => BuildCardSections(runs),
+            DashboardTab.Relics => BuildRelicSections(runs),
+            DashboardTab.Combos => BuildComboSections(runs),
+            DashboardTab.Ancients => BuildAncientSections(runs),
+            DashboardTab.Events => BuildEventSections(runs),
+            DashboardTab.Monsters => BuildMonsterSections(runs),
+            DashboardTab.Shops => BuildShopSections(runs),
+            _ => BuildOverviewSections(runs, index)
+        };
+
+        return new DashboardModel(DashboardTabTitle(tab), cards, sections);
+    }
+
     public static IReadOnlyList<string> GetFilterCharacters()
     {
         return GetIndex().Runs
@@ -173,6 +234,11 @@ internal static class RunHistoryAnalytics
             .Distinct()
             .OrderBy(value => value)
             .ToArray();
+    }
+
+    public static string PrettyName(string id)
+    {
+        return PrettyId(id);
     }
 
     private static RunHistoryIndex BuildIndex()
@@ -539,6 +605,271 @@ internal static class RunHistoryAnalytics
         }
     }
 
+    private static List<DashboardSection> BuildOverviewSections(IReadOnlyCollection<RunRecord> runs, RunHistoryIndex index)
+    {
+        Dictionary<string, MetricSummary> characters = SummarizeMetric(runs, run => run.Characters);
+        Dictionary<string, MetricSummary> cards = SummarizeMetric(runs, run => run.NonStarterFinalCardIds);
+        Dictionary<string, MetricSummary> relics = SummarizeMetric(runs, run => run.NonStarterRelicIds);
+        Dictionary<string, MetricSummary> events = SummarizeMetric(runs, run => run.EventChoiceKeys);
+
+        List<DashboardSection> sections =
+        [
+            new("Character Performance", "Your current filtered spread by character.", BuildMetricRows(characters
+                .OrderByDescending(pair => pair.Value.Count)
+                .ThenByDescending(pair => pair.Value.WinRate)
+                .ThenBy(pair => pair.Key)
+                .Take(8), "runs")),
+
+            new("Top Signals", "Non-starter cards and relics only, so starter decks stop eating the leaderboard.", [
+                BuildTopMetricRow("Best Card", cards, 5),
+                BuildTopMetricRow("Best Relic", relics, 3),
+                BuildTopCountRow("Death Enemy", SummarizeCount(runs.SelectMany(run => run.DeathMonsterIds))),
+                BuildTopMetricRow("Event Choice", events, 2, PrettyEventChoice)
+            ]),
+
+            new("Pathing Snapshot", "How often each room type appears in filtered runs, and the run win rate when it appears.", BuildMetricRows(SummarizeWeightedMetric(runs, run => run.RoomCounts)
+                .OrderByDescending(pair => pair.Value.Count)
+                .ThenBy(pair => pair.Key)
+                .Take(10), "rooms"))
+        ];
+
+        if (runs.Count == index.TotalRuns)
+        {
+            sections.Add(new DashboardSection("Index Health", "Scanner diagnostics.", [
+                new("History folders", index.HistoryFolderCount.ToString(), "folders scanned", null),
+                new("Duplicates skipped", index.DuplicateFilesSkipped.ToString(), "same run seen more than once", null),
+                new("Unreadable files", index.FailedFiles.ToString(), "files skipped", null)
+            ]));
+        }
+
+        return sections;
+    }
+
+    private static List<DashboardSection> BuildCardSections(IReadOnlyCollection<RunRecord> runs)
+    {
+        return
+        [
+            new("Best Non-Starter Final Deck Cards", "Cards in your final deck, excluding starter cards.", BuildMetricRows(SummarizeMetric(runs, run => run.NonStarterFinalCardIds)
+                .Where(pair => pair.Value.Count >= 5)
+                .OrderByDescending(pair => pair.Value.WinRate)
+                .ThenByDescending(pair => pair.Value.Wins)
+                .ThenBy(pair => pair.Key)
+                .Take(12), "final decks")),
+
+            new("Most-Picked Card Rewards", "How often you take a card when it appears in reward screens.", BuildChoiceRows(SummarizeCardChoices(runs)
+                .Where(pair => pair.Value.Seen > 0 && !StarterCardIds.Contains(pair.Key))
+                .OrderByDescending(pair => pair.Value.PickRate)
+                .ThenByDescending(pair => pair.Value.Picked)
+                .ThenBy(pair => pair.Key)
+                .Take(12))),
+
+            new("Best Upgrades", "Win rate in runs where this card was upgraded.", BuildMetricRows(SummarizeMetric(runs, run => run.UpgradedCardIds)
+                .Where(pair => pair.Value.Count >= 2 && !StarterCardIds.Contains(pair.Key))
+                .OrderByDescending(pair => pair.Value.WinRate)
+                .ThenByDescending(pair => pair.Value.Count)
+                .ThenBy(pair => pair.Key)
+                .Take(10), "upgraded runs", suffix: "+")),
+
+            new("Best Enchantments", "Win rate in runs where this card was enchanted.", BuildMetricRows(SummarizeMetric(runs, run => run.EnchantedCardIds)
+                .Where(pair => pair.Value.Count >= 2 && !StarterCardIds.Contains(pair.Key))
+                .OrderByDescending(pair => pair.Value.WinRate)
+                .ThenByDescending(pair => pair.Value.Count)
+                .ThenBy(pair => pair.Key)
+                .Take(10), "enchanted runs"))
+        ];
+    }
+
+    private static List<DashboardSection> BuildRelicSections(IReadOnlyCollection<RunRecord> runs)
+    {
+        return
+        [
+            new("Best Non-Starter Relics", "Relics in final builds, excluding starter relics.", BuildMetricRows(SummarizeMetric(runs, run => run.NonStarterRelicIds)
+                .Where(pair => pair.Value.Count >= 3)
+                .OrderByDescending(pair => pair.Value.WinRate)
+                .ThenByDescending(pair => pair.Value.Wins)
+                .ThenBy(pair => pair.Key)
+                .Take(16), "final builds")),
+
+            new("Most Common Non-Starter Relics", "Relics that appear most often in your filtered final builds.", BuildMetricRows(SummarizeMetric(runs, run => run.NonStarterRelicIds)
+                .OrderByDescending(pair => pair.Value.Count)
+                .ThenByDescending(pair => pair.Value.WinRate)
+                .ThenBy(pair => pair.Key)
+                .Take(16), "final builds"))
+        ];
+    }
+
+    private static List<DashboardSection> BuildComboSections(IReadOnlyCollection<RunRecord> runs)
+    {
+        Dictionary<string, MetricSummary> comboStats = [];
+        foreach (RunRecord run in runs)
+        {
+            foreach (string comboKey in BuildCardRelicCombos(run.NonStarterFinalCardIds.ToHashSet(StringComparer.Ordinal), run.NonStarterRelicIds.ToHashSet(StringComparer.Ordinal)))
+            {
+                comboStats.GetOrAdd(comboKey).AddResult(run.Won, run.CountedAsLoss);
+            }
+        }
+
+        return
+        [
+            new("Card + Relic Combos", "Non-starter cards paired with non-starter relics in the same final build.", BuildMetricRows(comboStats
+                .Where(pair => pair.Value.Count >= 3)
+                .OrderByDescending(pair => pair.Value.WinRate)
+                .ThenByDescending(pair => pair.Value.Wins)
+                .ThenByDescending(pair => pair.Value.Count)
+                .ThenBy(pair => pair.Key)
+                .Take(18), "runs", PrettyCombo))
+        ];
+    }
+
+    private static List<DashboardSection> BuildAncientSections(IReadOnlyCollection<RunRecord> runs)
+    {
+        Dictionary<string, ChoiceMetricSummary> ancientStats = [];
+        foreach (RunRecord run in runs)
+        {
+            foreach (AncientChoiceRecord choice in run.AncientChoices)
+            {
+                ancientStats.GetOrAdd(choice.ChoiceKey).AddChoice(choice.Picked, run.Won, run.CountedAsLoss);
+            }
+        }
+
+        return
+        [
+            new("Ancient Offers", "Offers seen at the start of acts: how often you picked them and how those runs ended.", BuildChoiceRows(ancientStats
+                .Where(pair => pair.Value.Seen > 0)
+                .OrderByDescending(pair => pair.Value.Seen)
+                .ThenByDescending(pair => pair.Value.PickRate)
+                .ThenBy(pair => pair.Key)
+                .Take(18), PrettyEventChoice))
+        ];
+    }
+
+    private static List<DashboardSection> BuildEventSections(IReadOnlyCollection<RunRecord> runs)
+    {
+        return
+        [
+            new("Event Choices", "Choices you made in event rooms and the run result afterward.", BuildMetricRows(SummarizeMetric(runs, run => run.EventChoiceKeys)
+                .Where(pair => pair.Value.Count >= 2)
+                .OrderByDescending(pair => pair.Value.Count)
+                .ThenByDescending(pair => pair.Value.WinRate)
+                .ThenBy(pair => pair.Key)
+                .Take(18), "chosen", PrettyEventChoice))
+        ];
+    }
+
+    private static List<DashboardSection> BuildMonsterSections(IReadOnlyCollection<RunRecord> runs)
+    {
+        Dictionary<string, int> deaths = SummarizeCount(runs.SelectMany(run => run.DeathMonsterIds));
+        int max = deaths.Count == 0 ? 0 : deaths.Values.Max();
+        return
+        [
+            new("Monster Trouble", "Enemies present in your death encounter most often.", deaths
+                .OrderByDescending(pair => pair.Value)
+                .ThenBy(pair => pair.Key)
+                .Take(18)
+                .Select(pair => new DashboardRow(PrettyId(pair.Key), $"{pair.Value}", "death encounters", max == 0 ? null : (double)pair.Value / max))
+                .ToList())
+        ];
+    }
+
+    private static List<DashboardSection> BuildShopSections(IReadOnlyCollection<RunRecord> runs)
+    {
+        int shopRuns = runs.Count(HasShopActivity);
+        int shopWins = runs.Count(run => run.Won && HasShopActivity(run));
+        int shopLosses = runs.Count(run => run.CountedAsLoss && HasShopActivity(run));
+
+        return
+        [
+            new("Shop Snapshot", "Early shop analytics from the run file. More precise purchase categories are a future pass.", [
+                new("Runs with Purchases", shopRuns.ToString(), $"{FormatPercent(Rate(shopWins, shopLosses))} win rate", Rate(shopWins, shopLosses)),
+                new("Gold Spent", runs.Sum(run => run.ShopGoldSpent).ToString("0"), "total gold", null),
+                new("Bought Relics", runs.Sum(run => run.ShopBoughtRelics).ToString(), "shop relic purchases", null),
+                new("Bought Potions", runs.Sum(run => run.ShopBoughtPotions).ToString(), "shop potion purchases", null),
+                new("Bought Colorless", runs.Sum(run => run.ShopBoughtColorless).ToString(), "colorless purchases", null),
+                new("Cards Gained", runs.Sum(run => run.ShopCardsGained).ToString(), "cards gained in shop rooms", null)
+            ])
+        ];
+    }
+
+    private static bool HasShopActivity(RunRecord run)
+    {
+        return run.ShopGoldSpent > 0 ||
+               run.ShopBoughtRelics > 0 ||
+               run.ShopBoughtPotions > 0 ||
+               run.ShopBoughtColorless > 0 ||
+               run.ShopCardsGained > 0;
+    }
+
+    private static List<DashboardRow> BuildMetricRows(
+        IEnumerable<KeyValuePair<string, MetricSummary>> metrics,
+        string countLabel,
+        Func<string, string>? labelFormatter = null,
+        string suffix = "")
+    {
+        return metrics
+            .Select(pair => new DashboardRow(
+                $"{(labelFormatter ?? PrettyId)(pair.Key)}{suffix}",
+                FormatPercent(pair.Value.WinRate),
+                $"{pair.Value.Wins}W · {pair.Value.Losses}L · {pair.Value.Count} {countLabel}",
+                pair.Value.WinRate))
+            .ToList();
+    }
+
+    private static List<DashboardRow> BuildChoiceRows(
+        IEnumerable<KeyValuePair<string, ChoiceMetricSummary>> choices,
+        Func<string, string>? labelFormatter = null)
+    {
+        return choices
+            .Select(pair => new DashboardRow(
+                (labelFormatter ?? PrettyId)(pair.Key),
+                FormatPercent(pair.Value.PickRate),
+                $"{pair.Value.Picked}/{pair.Value.Seen} picked · {FormatPercent(pair.Value.WinRate)} WR after pick",
+                pair.Value.PickRate))
+            .ToList();
+    }
+
+    private static DashboardRow BuildTopMetricRow(
+        string label,
+        Dictionary<string, MetricSummary> summary,
+        int minimumCount,
+        Func<string, string>? labelFormatter = null)
+    {
+        KeyValuePair<string, MetricSummary> top = summary
+            .Where(pair => pair.Value.Count >= minimumCount)
+            .OrderByDescending(pair => pair.Value.WinRate)
+            .ThenByDescending(pair => pair.Value.Wins)
+            .ThenBy(pair => pair.Key)
+            .FirstOrDefault();
+
+        return string.IsNullOrWhiteSpace(top.Key)
+            ? new DashboardRow(label, "Not enough data", $"needs {minimumCount}+ samples", null)
+            : new DashboardRow(label, (labelFormatter ?? PrettyId)(top.Key), $"{FormatPercent(top.Value.WinRate)} · {top.Value.Wins}W · {top.Value.Losses}L", top.Value.WinRate);
+    }
+
+    private static DashboardRow BuildTopCountRow(string label, Dictionary<string, int> summary)
+    {
+        KeyValuePair<string, int> top = summary
+            .OrderByDescending(pair => pair.Value)
+            .ThenBy(pair => pair.Key)
+            .FirstOrDefault();
+
+        return string.IsNullOrWhiteSpace(top.Key)
+            ? new DashboardRow(label, "Not enough data", "", null)
+            : new DashboardRow(label, PrettyId(top.Key), $"{top.Value} death encounters", null);
+    }
+
+    private static string FilterPill(DashboardFilter filter)
+    {
+        string character = filter.Character is null ? "All" : PrettyId(filter.Character);
+        string ascension = filter.Ascension is null ? "Any A" : $"A{filter.Ascension}";
+        string result = filter.Result switch
+        {
+            RunResultFilter.Wins => "Wins",
+            RunResultFilter.Losses => "Losses",
+            _ => "W+L"
+        };
+        return $"{character} · {ascension} · {result}";
+    }
+
     private static void AppendOverviewDashboard(StringBuilder builder, IReadOnlyCollection<RunRecord> runs, RunHistoryIndex index)
     {
         Dictionary<string, MetricSummary> characters = SummarizeMetric(runs, run => run.Characters);
@@ -583,7 +914,7 @@ internal static class RunHistoryAnalytics
             .Select(pair => $"{PrettyId(pair.Key)}: {FormatPercent(pair.Value.WinRate)} win rate ({pair.Value.Wins}-{pair.Value.Losses}), {pair.Value.Count} final decks"));
 
         AppendSection(builder, "Most-Picked Card Rewards", SummarizeCardChoices(runs)
-            .Where(pair => pair.Value.Seen > 0)
+            .Where(pair => pair.Value.Seen > 0 && !StarterCardIds.Contains(pair.Key))
             .OrderByDescending(pair => pair.Value.PickRate)
             .ThenByDescending(pair => pair.Value.Picked)
             .ThenBy(pair => pair.Key)
@@ -591,7 +922,7 @@ internal static class RunHistoryAnalytics
             .Select(pair => $"{PrettyId(pair.Key)}: {FormatPercent(pair.Value.PickRate)} pick rate ({pair.Value.Picked}/{pair.Value.Seen}), {FormatPercent(pair.Value.WinRate)} win rate when picked"));
 
         AppendSection(builder, "Best Upgrades", SummarizeMetric(runs, run => run.UpgradedCardIds)
-            .Where(pair => pair.Value.Count >= 2)
+            .Where(pair => pair.Value.Count >= 2 && !StarterCardIds.Contains(pair.Key))
             .OrderByDescending(pair => pair.Value.WinRate)
             .ThenByDescending(pair => pair.Value.Count)
             .ThenBy(pair => pair.Key)
@@ -599,7 +930,7 @@ internal static class RunHistoryAnalytics
             .Select(pair => $"{PrettyId(pair.Key)}+: {FormatPercent(pair.Value.WinRate)} win rate ({pair.Value.Wins}-{pair.Value.Losses}), upgraded in {pair.Value.Count} runs"));
 
         AppendSection(builder, "Best Enchanted Cards", SummarizeMetric(runs, run => run.EnchantedCardIds)
-            .Where(pair => pair.Value.Count >= 2)
+            .Where(pair => pair.Value.Count >= 2 && !StarterCardIds.Contains(pair.Key))
             .OrderByDescending(pair => pair.Value.WinRate)
             .ThenByDescending(pair => pair.Value.Count)
             .ThenBy(pair => pair.Key)
@@ -894,25 +1225,51 @@ internal static class RunHistoryAnalytics
         {
             entry = entry.Split('.', StringSplitOptions.RemoveEmptyEntries).LastOrDefault() ?? entry;
         }
+
+        entry = entry.Replace("_", " ", StringComparison.Ordinal).Replace("-", " ", StringComparison.Ordinal);
+        if (entry.All(c => !char.IsLetter(c) || char.IsUpper(c) || char.IsWhiteSpace(c)))
+        {
+            return TitleCaseWords(entry);
+        }
+
         StringBuilder builder = new(entry.Length + 8);
 
         for (int index = 0; index < entry.Length; index++)
         {
             char c = entry[index];
-            if (index > 0 && char.IsUpper(c) && !char.IsWhiteSpace(entry[index - 1]) && entry[index - 1] != '_' && entry[index - 1] != '-')
+            if (index > 0 && char.IsUpper(c) && char.IsLower(entry[index - 1]))
             {
                 builder.Append(' ');
-            }
-            else if (c is '_' or '-')
-            {
-                builder.Append(' ');
-                continue;
             }
 
             builder.Append(c);
         }
 
-        return builder.ToString();
+        return TitleCaseWords(builder.ToString());
+    }
+
+    private static string TitleCaseWords(string value)
+    {
+        string[] words = value.Split(' ', StringSplitOptions.RemoveEmptyEntries);
+        if (words.Length == 0)
+        {
+            return "Unknown";
+        }
+
+        return string.Join(" ", words.Select(word =>
+        {
+            if (word.Length == 0)
+            {
+                return word;
+            }
+
+            if (word.Length <= 2 && word.All(char.IsUpper))
+            {
+                return word;
+            }
+
+            return char.ToUpperInvariant(word[0]) + word[1..].ToLowerInvariant();
+        }));
     }
 
     private static string FormatPercent(double value)
@@ -956,11 +1313,7 @@ internal static class RunHistoryAnalytics
                 continue;
             }
 
-            bool isStarter = TryGetInt(item, "floor_added_to_deck", out int floorAdded) && floorAdded <= 0;
-            if (!TryGetInt(item, "floor_added_to_deck", out _))
-            {
-                isStarter = false;
-            }
+            bool isStarter = StarterCardIds.Contains(id);
 
             if (TryGetObject(item, "enchantment", out JsonElement enchantment) &&
                 TryGetString(enchantment, "id", out string? enchantmentId) &&
@@ -987,11 +1340,7 @@ internal static class RunHistoryAnalytics
                 continue;
             }
 
-            bool isStarter = TryGetInt(item, "floor_added_to_deck", out int floorAdded) && floorAdded <= 0;
-            if (!TryGetInt(item, "floor_added_to_deck", out _))
-            {
-                isStarter = false;
-            }
+            bool isStarter = StarterRelicIds.Contains(id);
 
             yield return (id, isStarter);
         }
@@ -1169,6 +1518,24 @@ internal static class RunHistoryAnalytics
         value = null;
         return false;
     }
+
+    public sealed record DashboardModel(
+        string Title,
+        IReadOnlyList<DashboardCard> Cards,
+        IReadOnlyList<DashboardSection> Sections);
+
+    public sealed record DashboardCard(string Label, string Value, string Detail);
+
+    public sealed record DashboardSection(
+        string Title,
+        string Subtitle,
+        IReadOnlyList<DashboardRow> Rows);
+
+    public sealed record DashboardRow(
+        string Label,
+        string Value,
+        string Detail,
+        double? ChartValue);
 
     public sealed record RunRecord(
         bool Won,
