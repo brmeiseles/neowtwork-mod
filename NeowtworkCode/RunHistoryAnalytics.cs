@@ -323,6 +323,7 @@ internal static class RunHistoryAnalytics
         HashSet<string> runEnchantmentIds = [];
         List<AncientChoiceRecord> runAncientChoices = [];
         HashSet<string> lastEncounterMonsterIds = [];
+        string? deathEncounterId = null;
         Dictionary<string, int> roomCounts = [];
         decimal runShopGoldSpent = 0;
         int runBoughtRelics = 0;
@@ -427,6 +428,7 @@ internal static class RunHistoryAnalytics
         {
             if (TryGetString(root, "killed_by_encounter", out string? killedByEncounter) && killedByEncounter is not null)
             {
+                deathEncounterId = killedByEncounter;
                 index.DeathEncounters.GetOrAdd(killedByEncounter).AddCountOnly();
             }
 
@@ -459,6 +461,7 @@ internal static class RunHistoryAnalytics
             NonStarterRelicIds: [.. runNonStarterRelicIds],
             CardChoices: runCardChoices,
             EventChoiceKeys: runEventChoiceKeys,
+            DeathEncounterId: deathEncounterId,
             DeathMonsterIds: [.. lastEncounterMonsterIds],
             RoomCounts: new Dictionary<string, int>(roomCounts, StringComparer.Ordinal),
             ShopGoldSpent: runShopGoldSpent,
@@ -623,7 +626,7 @@ internal static class RunHistoryAnalytics
             new("Top Signals", "Non-starter cards and relics only, so starter decks stop eating the leaderboard.", [
                 BuildTopMetricRow("Best Card", cards, 5),
                 BuildTopMetricRow("Best Relic", relics, 3),
-                BuildTopCountRow("Death Enemy", SummarizeCount(runs.SelectMany(run => run.DeathMonsterIds))),
+                BuildTopCountRow("Most Lethal Encounter", SummarizeCount(runs.Select(run => run.DeathEncounterId).OfType<string>())),
                 BuildTopMetricRow("Event Choice", events, 2, PrettyEventChoice)
             ]),
 
@@ -758,15 +761,15 @@ internal static class RunHistoryAnalytics
 
     private static List<DashboardSection> BuildMonsterSections(IReadOnlyCollection<RunRecord> runs)
     {
-        Dictionary<string, int> deaths = SummarizeCount(runs.SelectMany(run => run.DeathMonsterIds));
+        Dictionary<string, int> deaths = SummarizeCount(runs.Select(run => run.DeathEncounterId).OfType<string>());
         int max = deaths.Count == 0 ? 0 : deaths.Values.Max();
         return
         [
-            new("Monster Trouble", "Enemies present in your death encounter most often.", deaths
+            new("Monster Trouble", "The encounter that actually killed you, from the run file's death record.", deaths
                 .OrderByDescending(pair => pair.Value)
                 .ThenBy(pair => pair.Key)
                 .Take(18)
-                .Select(pair => new DashboardRow(PrettyId(pair.Key), $"{pair.Value}", "death encounters", max == 0 ? null : (double)pair.Value / max))
+                .Select(pair => new DashboardRow(PrettyId(pair.Key), $"{pair.Value}", "deaths", max == 0 ? null : (double)pair.Value / max))
                 .ToList())
         ];
     }
@@ -883,7 +886,7 @@ internal static class RunHistoryAnalytics
         AppendSection(builder, "Top Signals", [
             $"Best card: {FormatTopMetric(SummarizeMetric(runs, run => run.NonStarterFinalCardIds), minimumCount: 5)}",
             $"Best relic: {FormatTopMetric(SummarizeMetric(runs, run => run.NonStarterRelicIds), minimumCount: 3)}",
-            $"Most common death enemy: {FormatTopCount(SummarizeCount(runs.SelectMany(run => run.DeathMonsterIds)))}",
+            $"Most common lethal encounter: {FormatTopCount(SummarizeCount(runs.Select(run => run.DeathEncounterId).OfType<string>()))}",
             $"Most common event choice: {FormatTopMetric(SummarizeMetric(runs, run => run.EventChoiceKeys), minimumCount: 2)}"
         ]);
 
@@ -1010,11 +1013,11 @@ internal static class RunHistoryAnalytics
 
     private static void AppendMonstersDashboard(StringBuilder builder, IReadOnlyCollection<RunRecord> runs)
     {
-        AppendSection(builder, "Monster Trouble", SummarizeCount(runs.SelectMany(run => run.DeathMonsterIds))
+        AppendSection(builder, "Monster Trouble", SummarizeCount(runs.Select(run => run.DeathEncounterId).OfType<string>())
             .OrderByDescending(pair => pair.Value)
             .ThenBy(pair => pair.Key)
             .Take(18)
-            .Select(pair => $"{PrettyId(pair.Key)}: present in {pair.Value} death encounters"));
+            .Select(pair => $"{PrettyId(pair.Key)}: killed you {pair.Value} times"));
     }
 
     private static void AppendShopsDashboard(StringBuilder builder, IReadOnlyCollection<RunRecord> runs)
@@ -1550,6 +1553,7 @@ internal static class RunHistoryAnalytics
         IReadOnlyList<string> NonStarterRelicIds,
         IReadOnlyList<CardChoiceRecord> CardChoices,
         IReadOnlyList<string> EventChoiceKeys,
+        string? DeathEncounterId,
         IReadOnlyList<string> DeathMonsterIds,
         IReadOnlyDictionary<string, int> RoomCounts,
         decimal ShopGoldSpent,

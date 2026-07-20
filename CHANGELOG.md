@@ -12,6 +12,10 @@ Neowtwork uses semantic versioning.
 - Improved dashboard display names so character/card/relic IDs are easier to read.
 - Tightened “best of” analytics to exclude starter cards, Ascender's Bane, and observed character starter relics.
 
+### Fixed
+
+- Fixed Monster Trouble analytics to show the encounter that actually killed the run instead of every enemy present in the death room.
+
 ## 0.3.2 - 2026-07-20
 
 ### Changed
