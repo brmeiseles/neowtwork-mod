@@ -49,40 +49,7 @@ internal static class VanillaProgressImportAssistant
 
     public static string GetImportStatusText()
     {
-        try
-        {
-            ImportScan scan = ScanImportCandidates();
-            if (scan.SteamUsers.Count == 0)
-            {
-                return "[b]Base-game progress import[/b]\n\n" +
-                       $"No Slay the Spire 2 Steam save folders were found under:\n{scan.SaveRootPath}\n\n" +
-                       "If your progress is missing, launch the unmodded game once and make sure local save data exists.";
-            }
-
-            ImportCandidate? bestManualCandidate = SelectBestCandidate(scan, ImportMode.Manual);
-            string summary = "[b]Base-game progress import[/b]\n\n" +
-                             $"Save root:\n{scan.SaveRootPath}\n\n" +
-                             $"Steam save folders found: {scan.SteamUsers.Count}\n" +
-                             $"Vanilla profiles found: {scan.VanillaProfileCount}\n";
-
-            if (bestManualCandidate == null)
-            {
-                return summary +
-                       "\nNo meaningful vanilla profile was found to import.\n" +
-                       "If this looks wrong, launch the unmodded game once, then return here and refresh.";
-            }
-
-            return summary +
-                   $"\nReady to import: {bestManualCandidate.DisplayName}\n" +
-                   $"Vanilla: {FormatProfileStats(bestManualCandidate.SourceStats)}\n" +
-                   $"Modded: {FormatProfileStats(bestManualCandidate.TargetStats)}\n\n" +
-                   "Use Import Base Game Progress to copy vanilla progress into modded after creating a backup.";
-        }
-        catch (Exception exception)
-        {
-            return "[b]Base-game progress import[/b]\n\n" +
-                   $"Could not read save status.\n\n{exception.Message}";
-        }
+        return GetReadOnlyProgressStatusText();
     }
 
     public static void ShowManualImportDialog(Sts2Logger logger)
@@ -97,28 +64,7 @@ internal static class VanillaProgressImportAssistant
 
     public static string GetSyncStatusText()
     {
-        try
-        {
-            SyncPlan plan = BuildSyncPlan();
-            if (plan.Pairs.Count == 0)
-            {
-                return "[b]Progress sync[/b]\n\nNo vanilla/modded profile pairs were found.";
-            }
-
-            return "[b]Progress sync[/b]\n\n" +
-                   $"Setting: {(NeowtworkConfig.KeepBaseGameAndModdedProgressInSync ? "enabled" : "off")}\n" +
-                   $"Profile pairs found: {plan.Pairs.Count}\n" +
-                   $"Files to copy vanilla → modded: {plan.TotalVanillaToModded}\n" +
-                   $"Files to copy modded → vanilla: {plan.TotalModdedToVanilla}\n" +
-                   $"Conflicts needing review: {plan.TotalConflicts}\n\n" +
-                   "Sync preserves unique files from both sides and creates backups before writing.\n" +
-                   "Steam Cloud is not controlled by Neowtwork; if Steam shows a Cloud Conflict, review it carefully.";
-        }
-        catch (Exception exception)
-        {
-            return "[b]Progress sync[/b]\n\n" +
-                   $"Could not read sync status.\n\n{exception.Message}";
-        }
+        return GetReadOnlyProgressStatusText();
     }
 
     public static void ShowManualSyncDialog(Sts2Logger logger)
