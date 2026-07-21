@@ -2,16 +2,16 @@
   "title": "Neowtwork",
   "description": "Neowtwork adds read-only analytics to Slay the Spire 2: card win rates, pick rates, card stat sorting, relic stats, event choice stats, and run-history dashboards. It does not change gameplay and does not import, sync, overwrite, or delete save files.\n\nRequires BaseLib.\n\nCurrent focus:\n- Card Library analytics overlays\n- Card stat sorting\n- Card choice/shop stats\n- Event choice stats\n- Relic hover stats\n- Run-history dashboard\n\nNeowtwork is an early public beta mod and may need updates as Slay the Spire 2 changes.",
   "visibility": "private",
-  "changeNote": "Initial private Workshop test for Neowtwork 0.3.2. Progress tools are read-only; BaseLib 3.3.6 required.",
+  "changeNote": "Initial private Workshop test for Neowtwork 0.3.5. Progress tools are read-only; BaseLib 3.3.6 required. Includes Compendium dashboard polish, fixed monster death analytics, and fixed Card Stats sort hitbox.",
   "tags": [
     "Quality of Life",
     "UI",
     "Statistics"
   ],
   "dependencies": [
-    "3737335127"
+    3737335127
   ],
   "contentDescriptors": [],
   "minBranch": "public-beta",
-  "maxBranch": null
+  "maxBranch": "public-beta"
 }

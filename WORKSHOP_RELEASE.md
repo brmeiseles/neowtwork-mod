@@ -67,6 +67,18 @@ Workshop metadata is in:
 workshop/neowtwork/workshop.json
 ```
 
+Workshop item ID is tracked in:
+
+```text
+workshop/neowtwork/mod_id.txt
+```
+
+Current private Workshop item:
+
+```text
+3768751760
+```
+
 Initial release should remain:
 
 ```json
@@ -79,6 +91,8 @@ BaseLib Workshop dependency:
 3737335127
 ```
 
+In `workshop.json`, Workshop dependencies must be numeric Steam Workshop IDs, not strings.
+
 ## Upload
 
 Use Mega Crit's official uploader.
@@ -90,6 +104,18 @@ ModUploader upload -w workshop/neowtwork
 ```
 
 Only upload after confirming Steam is running and you are logged into the correct Steam account.
+
+Before the first successful upload, confirm the Steam Workshop legal agreement is accepted:
+
+```text
+https://steamcommunity.com/sharedfiles/workshoplegalagreement
+```
+
+If an upload hangs at `PreparingConfig` or `PreparingContent`, check the legal agreement and Steam client state before retrying with the saved item ID:
+
+```sh
+ModUploader upload -w workshop/neowtwork -i 3768751760
+```
 
 ## Private Workshop validation
 

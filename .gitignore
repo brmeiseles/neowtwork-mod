@@ -12,4 +12,5 @@ Properties/
 packages/
 .editorconfig
 *.user
+mod-uploader.log
 Directory.Build.props
