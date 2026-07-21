@@ -45,6 +45,7 @@ internal static class CardLibraryWinRateSort
     private const string DropdownName = "NeowtworkStatsSortDropdown";
     private const string MenuButtonName = "NeowtworkStatsSortMenuButton";
     private const string NativeSortButtonName = "NeowtworkStatsNativeSortButton";
+    private const string NativeSortHitboxName = "NeowtworkStatsNativeSortHitbox";
     private const float DefaultMenuButtonWidth = 280f;
     private const float MenuButtonVerticalOffset = 43f;
 
@@ -109,8 +110,7 @@ internal static class CardLibraryWinRateSort
             CustomMinimumSize = new Vector2(menuButtonWidth, menuButtonHeight),
             FocusMode = Control.FocusModeEnum.None,
             ZIndex = alphabetSorter.ZIndex + 3,
-            MouseFilter = Control.MouseFilterEnum.Stop,
-            MouseDefaultCursorShape = Control.CursorShape.PointingHand
+            MouseFilter = Control.MouseFilterEnum.Ignore
         };
 
         PopupMenu popup = menuButton.GetPopup();
@@ -122,6 +122,21 @@ internal static class CardLibraryWinRateSort
         StyleTransparentOverlay(menuButton);
         StyleDropdownPopup(menuButton);
         UpdateMenuButtonState(menuButton, visualSortButton, grid);
+
+        Button hitbox = new()
+        {
+            Name = NativeSortHitboxName,
+            Position = Vector2.Zero,
+            Size = new Vector2(menuButtonWidth, menuButtonHeight),
+            CustomMinimumSize = new Vector2(menuButtonWidth, menuButtonHeight),
+            FocusMode = Control.FocusModeEnum.None,
+            ZIndex = 100,
+            MouseFilter = Control.MouseFilterEnum.Stop,
+            MouseDefaultCursorShape = Control.CursorShape.PointingHand
+        };
+        StyleTransparentButton(hitbox);
+        hitbox.Pressed += () => menuButton.ShowPopup();
+        visualSortButton.AddChild(hitbox);
 
         popup.IdPressed += id =>
         {
@@ -263,6 +278,18 @@ internal static class CardLibraryWinRateSort
         dropdown.AddThemeStyleboxOverride("pressed", empty);
         dropdown.AddThemeStyleboxOverride("disabled", empty);
         dropdown.AddThemeStyleboxOverride("focus", new StyleBoxEmpty());
+    }
+
+    private static void StyleTransparentButton(Button button)
+    {
+        StyleBoxEmpty empty = new();
+        button.Flat = true;
+        button.Text = "";
+        button.AddThemeStyleboxOverride("normal", empty);
+        button.AddThemeStyleboxOverride("hover", empty);
+        button.AddThemeStyleboxOverride("pressed", empty);
+        button.AddThemeStyleboxOverride("disabled", empty);
+        button.AddThemeStyleboxOverride("focus", new StyleBoxEmpty());
     }
 
     private static void StyleDropdownPopup(MenuButton dropdown)

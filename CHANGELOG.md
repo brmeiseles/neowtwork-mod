@@ -15,6 +15,7 @@ Neowtwork uses semantic versioning.
 ### Fixed
 
 - Fixed Monster Trouble analytics to show the encounter that actually killed the run instead of every enemy present in the death room.
+- Fixed the Card Library Card Stats sort hitbox so clicking the visible Card Stats row opens the menu.
 
 ## 0.3.2 - 2026-07-20
 

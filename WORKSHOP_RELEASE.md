@@ -1,6 +1,6 @@
 # Neowtwork Workshop Release Checklist
 
-Current target: `0.3.4`
+Current target: `0.3.5`
 
 ## Current stance
 
@@ -25,7 +25,7 @@ Neowtwork is read-only for progress/save data.
   - No Neowtwork auto-sync/import messages.
   - No new Neowtwork errors.
 - `Neowtwork.json` has:
-  - version `0.3.4`
+  - version `0.3.5`
   - BaseLib dependency `3.3.6`
   - `affects_gameplay: false`
 
