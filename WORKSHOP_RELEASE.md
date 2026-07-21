@@ -93,6 +93,8 @@ BaseLib Workshop dependency:
 
 In `workshop.json`, Workshop dependencies must be numeric Steam Workshop IDs, not strings.
 
+Do not set `minBranch` / `maxBranch` in `workshop.json` for now. Steam accepted the upload only after those branch restrictions were removed; keeping compatibility in `Neowtwork.json` is enough for the current public-beta release.
+
 ## Upload
 
 Use Mega Crit's official uploader.

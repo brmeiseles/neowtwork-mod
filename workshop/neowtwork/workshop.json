@@ -11,7 +11,5 @@
   "dependencies": [
     3737335127
   ],
-  "contentDescriptors": [],
-  "minBranch": "public-beta",
-  "maxBranch": "public-beta"
+  "contentDescriptors": []
 }
